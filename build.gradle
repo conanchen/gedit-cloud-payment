@@ -1,0 +1,82 @@
+buildscript {
+    ext {
+        springBootVersion = '1.5.8.RELEASE'
+        gradleDockerVersion   = "0.17.2"
+        GRPC_VERSION = '1.8.0'
+        GRPC_STARTER_VERSION = '2.1.4'
+    }
+    repositories {
+        mavenCentral()
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+        classpath("gradle.plugin.com.palantir.gradle.docker:gradle-docker:${gradleDockerVersion}")
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'com.palantir.docker'
+
+sourceCompatibility = 1.8
+
+// This is used as the docker image prefix (org)
+group = 'conanchen'
+version =  '0.0.1-SNAPSHOT'
+
+jar {
+    baseName = 'gedit-cloud-hello'
+}
+
+// tag::task[]
+docker {
+    name "${project.group}/${jar.baseName}"
+    files jar.archivePath
+    buildArgs(['JAR_FILE': "${jar.archiveName}"])
+}// end::task[]
+
+repositories {
+    mavenCentral()
+    jcenter()
+    maven { url 'https://jitpack.io' }
+}
+
+configurations.all {
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
+
+dependencies {
+
+    compile 'com.github.conanchen.gedit-api-grpc:grpc-java:master-SNAPSHOT'
+
+    compile("org.lognet:grpc-spring-boot-starter:$GRPC_STARTER_VERSION") {
+        exclude group: 'org.slf4j', module: 'log4j-over-slf4j'
+        exclude group: 'io.grpc', module: 'grpc-protobuf'
+        exclude group: 'io.grpc', module: 'grpc-services'
+        exclude group: 'io.grpc', module: 'grpc-netty'
+    }
+
+    compile("io.grpc:grpc-protobuf:$GRPC_VERSION")
+    compile("io.grpc:grpc-services:$GRPC_VERSION")
+    compile("io.grpc:grpc-netty:$GRPC_VERSION")
+
+    compile("org.springframework.boot:spring-boot-starter") {
+        force true
+        exclude group: 'org.slf4j', module: 'log4j-over-slf4j'
+    }
+    compile("org.springframework.boot:spring-boot-starter-logging") {
+        force true
+        exclude group: 'org.slf4j', module: 'log4j-over-slf4j'
+    }
+    compile("org.springframework.boot:spring-boot-starter-web") {
+        exclude group: 'org.slf4j', module: 'log4j-over-slf4j'
+    }
+    compile("org.springframework.boot:spring-boot-starter-actuator") {
+        exclude group: 'org.slf4j', module: 'log4j-over-slf4j'
+    }
+    testCompile('org.springframework.boot:spring-boot-starter-test')
+}
