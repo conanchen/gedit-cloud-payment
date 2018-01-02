@@ -1,4 +1,4 @@
-package com.github.conanchen.gedit.hello;
+package com.github.conanchen.gedit.payment;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -7,7 +7,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
-public class CloudHelloApplicationTests {
+public class CloudPaymentApplicationTests {
 
 	@Test
 	public void contextLoads() {

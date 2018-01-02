@@ -1,4 +1,4 @@
-package com.github.conanchen.gedit.hello.controller;
+package com.github.conanchen.gedit.payment.controller;
 
 import com.google.gson.Gson;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
