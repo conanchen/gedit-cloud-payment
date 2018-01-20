@@ -28,7 +28,7 @@ group = 'conanchen'
 version =  '0.0.1-SNAPSHOT'
 
 jar {
-    baseName = 'gedit-cloud-hello'
+    baseName = 'gedit-cloud-payment'
 }
 
 // tag::task[]
@@ -37,6 +37,17 @@ docker {
     files jar.archivePath
     buildArgs(['JAR_FILE': "${jar.archiveName}"])
 }// end::task[]
+task buildDocker(type: Docker, dependsOn: build) {
+    push = true
+    applicationName = jar.baseName
+    dockerfile = file('src/main/docker/Dockerfile')
+    doFirst {
+        copy {
+            from jar
+            into stageDir
+        }
+    }
+}
 
 repositories {
     mavenCentral()
@@ -51,7 +62,7 @@ configurations.all {
 
 dependencies {
 
-    compile 'com.github.conanchen.gedit-api-grpc:grpc-java:master-SNAPSHOT'
+    compile 'com.github.conanchen:gedit-api-grpc:9d2c405604'
 
     compile("org.lognet:grpc-spring-boot-starter:$GRPC_STARTER_VERSION") {
         exclude group: 'org.slf4j', module: 'log4j-over-slf4j'
@@ -78,5 +89,22 @@ dependencies {
     compile("org.springframework.boot:spring-boot-starter-actuator") {
         exclude group: 'org.slf4j', module: 'log4j-over-slf4j'
     }
+    compile ('org.springframework.boot:spring-boot-starter-data-jpa') {
+        force true
+        exclude group: 'org.apache.tomcat',module: 'tomcat-jdbc'
+    }
+    compile 'mysql:mysql-connector-java'
+    // hikari
+    compile 'com.zaxxer:HikariCP:2.7.4'
+    compile 'org.projectlombok:lombok:1.16.18'
+    // jwt
+    compile ('io.jsonwebtoken:jjwt:0.9.0'){
+        exclude group: 'com.fasterxml.jackson.core',module: 'jackson-databind'
+    }
+    compile 'com.martiansoftware:hope-and-doubt:0.1.0'
+    compile fileTree(dir:'libs',include:['*.jar'])
     testCompile('org.springframework.boot:spring-boot-starter-test')
+    compile("org.elasticsearch.client:elasticsearch-rest-high-level-client:6.1.1")
+    compile 'com.github.wxpay:WXPay-SDK-Java:0.0.4'
+
 }
