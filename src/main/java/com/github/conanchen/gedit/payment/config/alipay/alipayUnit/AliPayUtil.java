@@ -3,6 +3,8 @@ package com.github.conanchen.gedit.payment.config.alipay.alipayUnit;
 import com.alipay.api.AlipayConstants;
 import com.github.conanchen.gedit.payment.PaymentEnum.AliPayChannelsEnum;
 import com.github.conanchen.gedit.payment.config.alipay.alipayConfig.AlipayConfig;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -10,7 +12,11 @@ import java.util.*;
 /**
  * Created by ZhouZeshao on 2018/1/15.
  */
-public class AliPayUnit {
+@Component
+public class AliPayUtil {
+
+    @Autowired
+    private AlipayConfig alipayConfig;
 
     public String payChannels(Integer [] array){
         List<Integer> list = Arrays.asList(array);
@@ -24,7 +30,7 @@ public class AliPayUnit {
         return stringBuffer.toString();
     }
 
-    public static Map<String,String> builderAliPay(String notify_url){
+    public Map<String,String> builderAliPay(String notify_url){
         Map<String,String> map= new HashMap<String,String>();
         map.put("notify_url", notify_url);
         map.put("charset", "utf-8");
@@ -33,7 +39,7 @@ public class AliPayUnit {
         SimpleDateFormat sy = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String strDate= sy.format(new Date());
         map.put("timestamp", strDate);
-        map.put("app_id", AlipayConfig.app_id);
+        map.put("app_id", alipayConfig.app_id);
         map.put("version", "1.0");
         map.put("sign_type", "RSA");
 //        map.put("extend_params",JSON.toJSONString(builderExtendParams()));
@@ -53,9 +59,9 @@ public class AliPayUnit {
         return jsonObject;
     }
 
-    public static String createSign(Map<String,String> map){
+    public String createSign(Map<String,String> map){
         String content = AlipayCore.createLinkString(map);
-        String string = RSA.sign(content, AlipayConfig.private_key, "utf-8");
+        String string = RSA.sign(content, alipayConfig.private_key, "utf-8");
         map.put("sign",string);
        return AlipayCore.getSignEncodeUrl(map, true);
     }

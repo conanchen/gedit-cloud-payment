@@ -7,7 +7,7 @@ import com.github.conanchen.gedit.payment.GrpcService.UserService;
 import com.github.conanchen.gedit.payment.PaymentEnum.PaymentStatusEnum;
 import com.github.conanchen.gedit.payment.common.grpc.PaymentResponse;
 import com.github.conanchen.gedit.payment.config.alipay.alipayUnit.AliPayRequest;
-import com.github.conanchen.gedit.payment.config.alipay.alipayUnit.AliPayUnit;
+import com.github.conanchen.gedit.payment.config.alipay.alipayUnit.AliPayUtil;
 import com.github.conanchen.gedit.payment.config.wxpay.weixinPayConfig.WeixinPayConfig;
 import com.github.conanchen.gedit.payment.config.wxpay.weixinPayUtil.MD5Util;
 import com.github.conanchen.gedit.payment.config.wxpay.weixinPayUtil.WXPAySign;
@@ -58,7 +58,10 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
     private UserService userService;
     @Autowired
     private RedisTemplate redisTemplate;
-
+    @Autowired
+    private WXPAySign wxpAySign;
+    @Autowired
+    private AliPayUtil aliPayUtil;
     @Autowired
     private PointsItemRepository itemRepository;
     @Override
@@ -250,7 +253,7 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         String desc = "尝试支付";
         String notify_url = "http://dev.jifenpz.com/aliPay/notify";
         //封装公共请求参数,这里不需要改动.
-        Map<String,String> signMap = AliPayUnit.builderAliPay(notify_url);
+        Map<String,String> signMap = aliPayUtil.builderAliPay(notify_url);
         Map<String,String> map = new HashMap<>();
         map.put("desc",desc);
         String body = gson.toJson(map);
@@ -267,7 +270,7 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
 //        //可用支付类型,与禁用支付类型必须相斥，请追加Array参数，参数来源AliPayChannelsEnum
 //        map.put("enable_pay_channels",aliPayUnit.payChannels(array));
         signMap.put("biz_content",gson.toJson(bizContent));
-        return AliPayUnit.createSign(signMap);
+        return aliPayUtil.createSign(signMap);
     }
 
     private SortedMap wxPayRequest(String orderNo,String shouldPay,String spbillCreateIp) throws Exception {
@@ -275,14 +278,14 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         WXPay wxPay = new WXPay(wxconfig);
         String notifyUrl =wxconfig.getNotify_url();
         String body = "尝试支付";
-        Map<String,String> data = WXPAySign.createMapToSign(body,orderNo,shouldPay,spbillCreateIp,notifyUrl,"APP");
+        Map<String,String> data = wxpAySign.createMapToSign(body,orderNo,shouldPay,spbillCreateIp,notifyUrl,"APP");
         log.info("data:{}",data);
         Map<String, String> resp = wxPay.unifiedOrder(data);
         SortedMap  map_weixin = new TreeMap();
         log.info("resp:{}",resp.toString());
         if(resp.get("return_code").equals("SUCCESS")&&resp.get("result_code").equals("SUCCESS")) {
             String prepayid = resp.get("prepay_id");
-            String sign_two = WXPAySign.WXPAY2Sign(prepayid,map_weixin);
+            String sign_two = wxpAySign.WXPAY2Sign(prepayid,map_weixin);
             map_weixin.put("sign", sign_two);
         }
         return map_weixin;

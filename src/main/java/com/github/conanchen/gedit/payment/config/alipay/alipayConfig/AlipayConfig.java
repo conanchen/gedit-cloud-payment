@@ -4,6 +4,7 @@ package com.github.conanchen.gedit.payment.config.alipay.alipayConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.context.annotation.PropertySources;
+import org.springframework.stereotype.Component;
 
 /* *
  *类名：AlipayConfig
@@ -25,6 +26,7 @@ import org.springframework.context.annotation.PropertySources;
 @PropertySources(
 		{@PropertySource(value = "config/alipay.properties")}
 )
+@Component
 public class AlipayConfig {
 
 	//↓↓↓↓↓↓↓↓↓↓请在这里配置您的基本信息↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓

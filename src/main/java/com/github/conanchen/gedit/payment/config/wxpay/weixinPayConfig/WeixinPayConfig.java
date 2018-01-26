@@ -4,6 +4,7 @@ import com.github.wxpay.sdk.WXPayConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.context.annotation.PropertySources;
+import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
 
@@ -17,6 +18,7 @@ import java.io.InputStream;
 @PropertySources(
         {@PropertySource(value = "config/wxpay.properties")}
 )
+@Component
 public class WeixinPayConfig implements WXPayConfig{
 
 

@@ -5,7 +5,6 @@ import com.github.conanchen.gedit.payment.PaymentEnum.PaymentStatusEnum;
 import com.github.conanchen.gedit.payment.config.alipay.alipayConfig.AlipayConfig;
 import com.github.conanchen.gedit.payment.config.alipay.alipayUnit.AlipayCore;
 import com.github.conanchen.gedit.payment.config.alipay.alipayUnit.RSA;
-import com.github.conanchen.gedit.payment.config.wxpay.weixinPayConfig.WeixinPayConfig;
 import com.github.conanchen.gedit.payment.model.Payment;
 import com.github.conanchen.gedit.payment.model.PointsItem;
 import com.github.conanchen.gedit.payment.repository.PaymentRepository;

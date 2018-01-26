@@ -2,6 +2,8 @@ package com.github.conanchen.gedit.payment.config.alipay.alipayUnit;
 
 import com.alipay.api.AlipayConstants;
 import com.github.conanchen.gedit.payment.config.alipay.alipayConfig.AlipayConfig;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.*;
@@ -17,6 +19,9 @@ import java.util.*;
  */
 
 public class AlipayCore {
+
+	@Autowired
+	private AlipayConfig alipayConfig;
     /** 
      * 除去数组中的空值和签名参数
      * @param sArray 签名参数组
@@ -84,7 +89,7 @@ public class AlipayCore {
     	   System.out.println(sb.toString());
     	   String sign = "";
     	   try {
-    	      sign = URLEncoder.encode(RSA.sign(sb.toString(), AlipayConfig.private_key, "utf-8"), "utf-8");//private_key私钥
+    	      sign = URLEncoder.encode(RSA.sign(sb.toString(), alipayConfig.private_key, "utf-8"), "utf-8");//private_key私钥
     	   } catch (UnsupportedEncodingException e) {
     	      e.printStackTrace();
     	   }
