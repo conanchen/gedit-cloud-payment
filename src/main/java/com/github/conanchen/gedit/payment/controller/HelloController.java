@@ -10,7 +10,6 @@ import java.text.DateFormat;
 import java.util.Date;
 
 @RestController
-@EnableAutoConfiguration
 public class HelloController {
     private final static Gson gson = new Gson();
     //

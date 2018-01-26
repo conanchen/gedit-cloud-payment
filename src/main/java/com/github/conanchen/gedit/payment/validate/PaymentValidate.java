@@ -1,11 +1,9 @@
 package com.github.conanchen.gedit.payment.validate;
 
-import com.github.conanchen.gedit.payment.grpc.CreatePaymentRequest;
-import com.github.conanchen.gedit.payment.grpc.PaymentResponse;
+import com.github.conanchen.gedit.payer.activeinapp.grpc.CreatePayerInappPaymentRequest;
+import com.github.conanchen.gedit.payment.common.grpc.PaymentResponse;
 import com.github.conanchen.gedit.payment.model.Points;
 import com.github.conanchen.gedit.payment.repository.PointsRepository;
-
-import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -18,11 +16,11 @@ public class PaymentValidate {
     private PointsRepository pointsRepository;
 
 
-    public void CreateValidate(CreatePaymentRequest request, StreamObserver<PaymentResponse> responseObserver, Points points){
+    public void CreateValidate(CreatePayerInappPaymentRequest request, StreamObserver<PaymentResponse> responseObserver, Points points){
         if(points.getUsable() < request.getPointsPay()){
             responseObserver.onNext(PaymentResponse.newBuilder()
                     .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder()
-                            .setCode(String.valueOf(Status.OUT_OF_RANGE.getCode().value()))
+                            .setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OUT_OF_RANGE)
                             .setDetails("积分余额不足")).build());
             return;
         }

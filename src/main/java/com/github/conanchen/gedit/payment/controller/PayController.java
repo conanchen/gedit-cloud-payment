@@ -15,7 +15,6 @@ import java.io.IOException;
  * Created by ZhouZeshao on 2018/1/16.
  */
 @RestController
-@EnableAutoConfiguration
 public class PayController {
 
     @Autowired

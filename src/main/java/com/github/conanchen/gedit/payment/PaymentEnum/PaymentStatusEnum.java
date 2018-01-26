@@ -7,7 +7,8 @@ public enum PaymentStatusEnum {
     NEW("0","创建"),
     INPROGRESS("50","INPROGRESS"),
     FAILED("51","FAILED"),
-    OK("52","OK");
+    OK("52","OK"),
+    END("53","TRADEEND");
 
     private String code;
 

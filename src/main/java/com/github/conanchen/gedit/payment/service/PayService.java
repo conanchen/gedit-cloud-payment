@@ -1,5 +1,6 @@
 package com.github.conanchen.gedit.payment.service;
 
+import com.github.conanchen.gedit.payment.PaymentEnum.BillEnum;
 import com.github.conanchen.gedit.payment.PaymentEnum.PaymentStatusEnum;
 import com.github.conanchen.gedit.payment.config.alipay.alipayConfig.AlipayConfig;
 import com.github.conanchen.gedit.payment.config.alipay.alipayUnit.AlipayCore;
@@ -10,9 +11,9 @@ import com.github.conanchen.gedit.payment.model.PointsItem;
 import com.github.conanchen.gedit.payment.repository.PaymentRepository;
 import com.github.conanchen.gedit.payment.repository.PointsItemRepository;
 import com.github.wxpay.sdk.WXPay;
-import com.github.wxpay.sdk.WXPayConfig;
 import com.github.wxpay.sdk.WXPayUtil;
 import com.google.gson.Gson;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,14 +30,15 @@ import java.util.Map;
  * Created by ZhouZeshao on 2018/1/16.
  */
 @Service
-
+@Slf4j
 public class PayService {
-    private static final Logger log = LoggerFactory.getLogger(PayService.class);
     private static Gson gson = new Gson();
     @Autowired
     private PaymentRepository paymentRepository;
     @Autowired
     private PointsItemRepository itemRepository;
+    @Autowired
+    private BillService billService;
 
     public void aliPayNotify(HttpServletRequest request, HttpServletResponse response) throws IOException {
         log.info("支付宝异步通知开始");
@@ -119,12 +121,13 @@ public class PayService {
         Payment payment = paymentRepository.findByOrderNo(orderNo);
         if(payment != null){
             if(payment.getStatus().equals(PaymentStatusEnum.NEW.getCode())){
-                payment.setStatus(PaymentStatusEnum.INPROGRESS.getCode());
+                payment.setStatus(PaymentStatusEnum.OK.getCode());
                 payment.setChannelOrderId(channelId);
                 paymentRepository.save(payment);
                 PointsItem pointsItem = itemRepository.findByOrderNo(orderNo);
-                pointsItem.setStatus(PaymentStatusEnum.INPROGRESS.getCode());
+                pointsItem.setStatus(PaymentStatusEnum.OK.getCode());
                 itemRepository.save(pointsItem);
+                billService.addPaymentBill(payment.getActualPay(),channelId,orderNo,BillEnum.CONSUME);
             }
         }
     }
@@ -132,7 +135,7 @@ public class PayService {
     private void updateTradeFinish(String orderNo){
         Payment payment = paymentRepository.findByOrderNo(orderNo);
         if(payment != null){
-            payment.setStatus(PaymentStatusEnum.OK.getCode());
+            payment.setStatus(PaymentStatusEnum.END.getCode());
             paymentRepository.save(payment);
         }
     }
