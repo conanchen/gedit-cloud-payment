@@ -11,11 +11,10 @@ import com.github.conanchen.gedit.payment.model.PointsItem;
 import com.github.conanchen.gedit.payment.repository.PaymentRepository;
 import com.github.conanchen.gedit.payment.repository.PointsItemRepository;
 import com.github.wxpay.sdk.WXPay;
+import com.github.wxpay.sdk.WXPayConfig;
 import com.github.wxpay.sdk.WXPayUtil;
 import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -39,6 +38,10 @@ public class PayService {
     private PointsItemRepository itemRepository;
     @Autowired
     private BillService billService;
+    @Autowired
+    private AlipayConfig alipayConfig;
+    @Autowired
+    private WXPayConfig wxConfig;
 
     public void aliPayNotify(HttpServletRequest request, HttpServletResponse response) throws IOException {
         log.info("支付宝异步通知开始");
@@ -50,7 +53,7 @@ public class PayService {
         requestMap.remove("sign");//将sign和sign_type从参数中移除,因为验证sign的时候该两个值不参与
         requestMap.remove("sign_type");
         String  requestStr = AlipayCore.createLinkString(requestMap);
-        if(RSA.verify(requestStr,returnSign, AlipayConfig.ali_public_key,"utf-8")){
+        if(RSA.verify(requestStr,returnSign, alipayConfig.ali_public_key,"utf-8")){
             String orderNo = requestMap.get("out_trade_no");
             if(requestMap.get("trade_status").equals("TRADE_SUCCESS")){
                 String channelId  = requestMap.get("trade_no");
@@ -73,8 +76,7 @@ public class PayService {
 
     public void wxPayNotify(HttpServletRequest request, HttpServletResponse response) throws Exception {
         log.info("微信同步通知开始");
-        WeixinPayConfig config = new WeixinPayConfig();
-        WXPay wxpay = new WXPay(config);
+        WXPay wxpay = new WXPay(wxConfig);
         String resXml = "";
         String xmlStr = getWXPayXml(request);
         Map<String, String> notifyMap = WXPayUtil.xmlToMap(xmlStr);  // 转换成map
