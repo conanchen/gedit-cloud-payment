@@ -30,14 +30,14 @@ public class PaymentBill {
     @GenericGenerator(name = "uuid", strategy = "uuid")
     private String uuid;
 
-    @Column(columnDefinition = "varchar(20) comment 平台内部的订单号,需要与交易订单号对应")
+    @Column(columnDefinition = "varchar(20) comment '平台内部的订单号,需要与交易订单号对应'")
     private String orderNo;
-    @Column(columnDefinition = "varchar(32) comment 对外的第三方订单号")
+    @Column(columnDefinition = "varchar(32) comment '对外的第三方订单号'")
     private String channelOrderId;
     //该笔账单的类型 1支出，2收入
-    @Column(columnDefinition = "integer(11) comment 金额收入为+支出为-")
+    @Column(columnDefinition = "integer(11) comment '金额收入为+支出为-'")
     private Integer amount;
-    @Column(columnDefinition = "integer(11) comment 类型 该笔交易实在那种情况下产生的")
+    @Column(columnDefinition = "integer(11) comment '类型 该笔交易实在那种情况下产生的'")
     private Integer type;
     @Column(columnDefinition = "datetime")
     private Date createDate;
