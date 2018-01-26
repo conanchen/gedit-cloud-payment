@@ -3,6 +3,7 @@ package com.github.conanchen.gedit.payment.config.alipay.alipayUnit;
 import com.alipay.api.AlipayConstants;
 import com.github.conanchen.gedit.payment.PaymentEnum.AliPayChannelsEnum;
 import com.github.conanchen.gedit.payment.config.alipay.alipayConfig.AlipayConfig;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +14,7 @@ import java.util.*;
  * Created by ZhouZeshao on 2018/1/15.
  */
 @Component
+@Slf4j
 public class AliPayUtil {
 
     @Autowired
@@ -61,9 +63,10 @@ public class AliPayUtil {
 
     public String createSign(Map<String,String> map){
         String content = AlipayCore.createLinkString(map);
-        String string = RSA.sign(content, alipayConfig.private_key, "utf-8");
-        map.put("sign",string);
-       return AlipayCore.getSignEncodeUrl(map, true);
+        String sign = RSA.sign(content, alipayConfig.private_key, "utf-8");
+        log.info("sign:{}",sign);
+        map.put("sign",sign);
+        return AlipayCore.getSignEncodeUrl(map, true);
     }
 
 }

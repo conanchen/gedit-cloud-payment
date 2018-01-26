@@ -57,9 +57,7 @@ public class AlipayCore {
 
         List<String> keys = new ArrayList<String>(params.keySet());
         Collections.sort(keys);
-
         String prestr = "";
-
         for (int i = 0; i < keys.size(); i++) {
             String key = keys.get(i);
             String value = params.get(key);
@@ -86,7 +84,6 @@ public class AlipayCore {
     	         sb.append(array[i]+"&");
     	      }
     	   }
-    	   System.out.println(sb.toString());
     	   String sign = "";
     	   try {
     	      sign = URLEncoder.encode(RSA.sign(sb.toString(), alipayConfig.private_key, "utf-8"), "utf-8");//private_key私钥
@@ -106,9 +103,7 @@ public class AlipayCore {
 			List<String> keys = new ArrayList<String>(map.keySet());
 			// key排序
 			Collections.sort(keys);
-
 			StringBuilder authInfo = new StringBuilder();
-
 			boolean first = true;// 是否第一个
 			for (String key: keys) {
 				if (first) {
