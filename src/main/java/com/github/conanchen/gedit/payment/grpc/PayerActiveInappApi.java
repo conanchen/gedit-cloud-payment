@@ -63,6 +63,8 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
     @Autowired
     private AliPayUtil aliPayUtil;
     @Autowired
+    private WeixinPayConfig wxPayConfig;
+    @Autowired
     private PointsItemRepository itemRepository;
     @Override
     public void getMyPayeeCode (GetMyPayeeCodeRequest request, StreamObserver<GetMyPayeeCodeResponse> streamObserver){
@@ -275,9 +277,8 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
     }
 
     private SortedMap wxPayRequest(String orderNo,String shouldPay,String spbillCreateIp) throws Exception {
-        WeixinPayConfig wxconfig = new WeixinPayConfig();
-        WXPay wxPay = new WXPay(wxconfig);
-        String notifyUrl =wxconfig.getNotify_url();
+        WXPay wxPay = new WXPay(wxPayConfig);
+        String notifyUrl =wxPayConfig.getNotify_url();
         String body = "尝试支付";
         Map<String,String> data = wxpAySign.createMapToSign(body,orderNo,shouldPay,spbillCreateIp,notifyUrl,"APP");
         log.info("data:{}",data);
