@@ -18,7 +18,7 @@ public class EntToMapUnit {
                 name = name.substring(0,1).toUpperCase()+name.substring(1); //将属性的首字符大写，方便构造get，set方法
                 Method m = model.getClass().getMethod("get"+name);
                 String value = String.valueOf(m.invoke(model));
-                if(map!=null && value!=null && value.equals("null"))
+                if(map!=null && value!=null && !value.equals("null"))
                     map.put(f.getName(), value);
                 else
                     continue;
