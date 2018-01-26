@@ -171,7 +171,7 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
 //        String payerUid = UUID.randomUUID().toString();
         Points points = pointsRepository.findByUserId(payerUid);
         if(points == null){
-            initPoint(payerUid);
+           points = initPoint(payerUid);
         }
         PaymentValidate paymentValidate = new PaymentValidate();
         paymentValidate.CreateValidate(request,responseObserver,points);
@@ -234,7 +234,7 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         return receiptCode.build();
     }
 
-    private void initPoint(String userId){
+    private Points initPoint(String userId){
         Points points = new Points();
         points.setUsable(0);
         points.setFreeze(0);
@@ -244,7 +244,8 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         points.setVersion(0l);
         points.setCreateDate(new Date());
         points.setUpdateDate(new Date());
-        pointsRepository.save(points);
+        Points returnPoints = (Points) pointsRepository.save(points);
+        return returnPoints;
     }
 
     private String aliPayRequest(String orderNo,int shouldPAy){
