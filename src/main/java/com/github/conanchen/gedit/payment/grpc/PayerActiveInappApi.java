@@ -257,11 +257,12 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         String notify_url = "http://dev.jifenpz.com/aliPay/notify";
         //封装公共请求参数,这里不需要改动.
         Map<String,String> signMap = aliPayUtil.builderAliPay(notify_url);
-        Map<String,String> map = new HashMap<>();
-        map.put("desc",desc);
-        String body = gson.toJson(map);
-        AliPayRequest aliPayRequest =new AliPayRequest(amount,subject,orderNo,body);
+//        Map<String,String> map = new HashMap<>();
+//        map.put("desc",desc);
+//        String body = gson.toJson(map);
+        AliPayRequest aliPayRequest =new AliPayRequest(amount,subject,orderNo,desc);
         Map<String, String> bizContent = EntToMapUnit.EntToMap(aliPayRequest,aliPayRequest.getClass());
+        log.info("bizContent:{}",bizContent.toString());
         //自定义公共参数！需要的时候放开即可
 //     PayPassParam payPassParam = new PayPassParam();
 //     Map<String, String> passback = EntToMap(payPassParam,payPassParam.getClass());
