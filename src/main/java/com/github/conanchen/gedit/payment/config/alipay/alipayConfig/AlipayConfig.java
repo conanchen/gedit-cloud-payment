@@ -53,7 +53,7 @@ public class AlipayConfig {
 	public static final String input_charset = "utf-8";
 	
 	// 签名方式 不需修改
-	public static final String sign_type = "RSA";
+	public static final String sign_type = "RSA2";
 //	public static final String service = "create_direct_pay_by_user";
 	// 收款支付宝账号，以2088开头由16位纯数字组成的字符串，一般情况下收款账号就是签约账号
 	@Value("${partner}")

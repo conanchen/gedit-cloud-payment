@@ -42,8 +42,9 @@ public class AliPayUtil {
         String strDate= sy.format(new Date());
         map.put("timestamp", strDate);
         map.put("app_id", alipayConfig.app_id);
+        log.info("appid:{}",alipayConfig.app_id);
         map.put("version", "1.0");
-        map.put("sign_type", "RSA");
+        map.put("sign_type", "RSA2");
 //        map.put("extend_params",JSON.toJSONString(builderExtendParams()));
         return map;
     }
@@ -63,6 +64,7 @@ public class AliPayUtil {
 
     public String createSign(Map<String,String> map){
         String content = AlipayCore.createLinkString(map);
+        log.info("private_key:{}",alipayConfig.private_key);
         String sign = RSA.sign(content, alipayConfig.private_key, "utf-8");
         log.info("sign:{}",sign);
         map.put("sign",sign);
