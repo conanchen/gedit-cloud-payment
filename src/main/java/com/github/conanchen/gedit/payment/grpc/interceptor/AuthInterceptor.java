@@ -40,6 +40,7 @@ public class AuthInterceptor implements ServerInterceptor {
         Claims identity = null;
         try {
             // You need to implement validateIdentity
+            log.info("header:{}",headers);
             identity = validateIdentity(headers);
         }catch (JwtException e){
             //ignore

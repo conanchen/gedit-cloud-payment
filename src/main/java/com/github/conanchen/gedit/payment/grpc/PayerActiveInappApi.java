@@ -2,6 +2,7 @@ package com.github.conanchen.gedit.payment.grpc;
 
 import com.github.conanchen.gedit.common.grpc.PaymentChannel;
 import com.github.conanchen.gedit.payer.activeinapp.grpc.*;
+import com.github.conanchen.gedit.payment.GrpcService.AccountingService;
 import com.github.conanchen.gedit.payment.GrpcService.StoreService;
 import com.github.conanchen.gedit.payment.GrpcService.UserService;
 import com.github.conanchen.gedit.payment.PaymentEnum.PaymentStatusEnum;
@@ -30,7 +31,6 @@ import com.google.gson.Gson;
 import com.martiansoftware.validation.Hope;
 import com.martiansoftware.validation.UncheckedValidationException;
 import io.grpc.Metadata;
-import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import io.jsonwebtoken.Claims;
 import lombok.extern.slf4j.Slf4j;
@@ -66,6 +66,9 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
     private WeixinPayConfig wxPayConfig;
     @Autowired
     private PointsItemRepository itemRepository;
+    @Autowired
+    private AccountingService accountingService;
+
     @Override
     public void getMyPayeeCode (GetMyPayeeCodeRequest request, StreamObserver<GetMyPayeeCodeResponse> streamObserver){
         //only called by me,例如店员/收银员app调用本api生成收款码供顾客扫码支付
@@ -74,7 +77,7 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         UserProfile payeeProfile = UserProfile.newBuilder().build();
         Metadata header = AuthInterceptor.HEADERS.get();//获取header并将其传入调用方法中
         log.info("header:{}",header.toString());
-        UserProfileResponse userProfileResponse = userService.getUser(payeeStoreUuid,header);
+        UserProfileResponse userProfileResponse = userService.getUser(header);
         if(userProfileResponse.hasUserProfile()){
             payeeProfile = userProfileResponse.getUserProfile();
         }
@@ -100,34 +103,29 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         ValueOperations<String, PayeeCode> operations = redisTemplate.opsForValue();
         PayeeCode o = operations.get(code);
         PayeeCode receiptCode = PayeeCode.newBuilder().build();
-        String returnCode ="";
+        com.github.conanchen.gedit.common.grpc.Status.Code returnCode;
         String msg = "";
         if(o != null){
             receiptCode = gson.fromJson(o.toString(),PayeeCode.class);
-            returnCode = Status.OK.getCode().toString();
+            returnCode = com.github.conanchen.gedit.common.grpc.Status.Code.OK;
             msg = "success";
         }else{
-            returnCode = Status.OUT_OF_RANGE.getCode().toString();
+            returnCode = com.github.conanchen.gedit.common.grpc.Status.Code.OUT_OF_RANGE;
             msg = "支付码过期,请收银员刷新二维码！";
         }
         GetPayeeCodeResponse response = GetPayeeCodeResponse.newBuilder().setPayeeCode(receiptCode)
-                .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder()
+                .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(returnCode)
                         .setDetails(msg).build()).build();
         streamObserver.onNext(response);
     }
     @Override
-    public void prepare (PreparePayerInappPaymentRequest request,StreamObserver<PreparePayerInappPaymentResponse> streamObserver){
+    public void prepare(PreparePayerInappPaymentRequest request,StreamObserver<PreparePayerInappPaymentResponse> streamObserver){
         //only called by me, 顾客扫码店员/收银员的收款码后，如果支付一定金额将会获取多少积分返还等信息
         String code = request.getPayeeCode();
         boolean isPointsPay = request.getIsPointsPay();
         int shouldPay = request.getShouldPay();
         int pointsPay = 0;
-        if(isPointsPay){
-            //todo 差一段远程调用--计算积分的方法
-        }else{
-            //todo 计算不使用积分支付时候要应该返还的积分
-        }
-
+        //todo 询问accounting系统用户积分情况
         PreparePayerInappPaymentResponse response = PreparePayerInappPaymentResponse.newBuilder()
                 .setActualPay(0)
                 .setPayeeCode(code)
@@ -225,8 +223,8 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
             receiptCode.setExpiresIn(-1);
             receiptCode.setPayeeUuid(payeeProfile.getUuid());
             receiptCode.setPayeeLogo(payeeProfile.getLogo());
-            receiptCode.setPayeeName(payeeProfile.getName());
-            receiptCode.setPayeeWorkerName(payeeProfile.getName());
+            receiptCode.setPayeeName(payeeProfile.getUsername());
+            receiptCode.setPayeeWorkerName(payeeProfile.getUsername());
             receiptCode.setPayeeWorkerUuid(payeeProfile.getUuid());
             receiptCode.setPayeeLogo(payeeProfile.getLogo());
             receiptCode.setPayeeStoreLogo(storeProfile.getLogo());

@@ -54,7 +54,6 @@ public class AlipayCore {
      * @return 拼接后字符串
      */
     public static String createLinkString(Map<String, String> params) {
-
         List<String> keys = new ArrayList<String>(params.keySet());
         Collections.sort(keys);
         String prestr = "";
