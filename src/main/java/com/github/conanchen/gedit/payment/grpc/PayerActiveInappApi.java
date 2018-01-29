@@ -1,5 +1,12 @@
 package com.github.conanchen.gedit.payment.grpc;
 
+import com.alipay.api.AlipayApiException;
+import com.alipay.api.AlipayClient;
+import com.alipay.api.DefaultAlipayClient;
+import com.alipay.api.domain.AlipayTradeAppPayModel;
+import com.alipay.api.request.AlipayTradeAppPayRequest;
+import com.alipay.api.response.AlipayTradeAppPayResponse;
+import com.github.conanchen.gedit.accounting.rewardsif.grpc.RewardIfEventResponse;
 import com.github.conanchen.gedit.common.grpc.PaymentChannel;
 import com.github.conanchen.gedit.payer.activeinapp.grpc.*;
 import com.github.conanchen.gedit.payment.GrpcService.AccountingService;
@@ -7,6 +14,7 @@ import com.github.conanchen.gedit.payment.GrpcService.StoreService;
 import com.github.conanchen.gedit.payment.GrpcService.UserService;
 import com.github.conanchen.gedit.payment.PaymentEnum.PaymentStatusEnum;
 import com.github.conanchen.gedit.payment.common.grpc.PaymentResponse;
+import com.github.conanchen.gedit.payment.config.alipay.alipayConfig.AlipayConfig;
 import com.github.conanchen.gedit.payment.config.alipay.alipayUnit.AliPayRequest;
 import com.github.conanchen.gedit.payment.config.alipay.alipayUnit.AliPayUtil;
 import com.github.conanchen.gedit.payment.config.wxpay.weixinPayConfig.WeixinPayConfig;
@@ -69,6 +77,9 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
     @Autowired
     private AccountingService accountingService;
 
+    @Autowired
+    private AlipayConfig alipayConfig;
+
     @Override
     public void getMyPayeeCode (GetMyPayeeCodeRequest request, StreamObserver<GetMyPayeeCodeResponse> streamObserver){
         //only called by me,例如店员/收银员app调用本api生成收款码供顾客扫码支付
@@ -122,10 +133,16 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
     public void prepare(PreparePayerInappPaymentRequest request,StreamObserver<PreparePayerInappPaymentResponse> streamObserver){
         //only called by me, 顾客扫码店员/收银员的收款码后，如果支付一定金额将会获取多少积分返还等信息
         String code = request.getPayeeCode();
-        boolean isPointsPay = request.getIsPointsPay();
         int shouldPay = request.getShouldPay();
         int pointsPay = 0;
+        Claims claims = AuthInterceptor.USER_CLAIMS.get();
+        String payerUuid = claims.getSubject();
+        ValueOperations<String, PayeeCode> operations = redisTemplate.opsForValue();
+        PayeeCode payeeCodeInfo = operations.get(code);
         //todo 询问accounting系统用户积分情况
+        List<RewardIfEventResponse> responseList =  accountingService.askReward(payerUuid
+                ,payeeCodeInfo.getPayeeUuid(),payeeCodeInfo.getPayeeStoreUuid(),
+                payeeCodeInfo.getPayeeWorkerUuid(),shouldPay);
         PreparePayerInappPaymentResponse response = PreparePayerInappPaymentResponse.newBuilder()
                 .setActualPay(0)
                 .setPayeeCode(code)
@@ -136,7 +153,6 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
                 .setActualPay(0)
                 .setPointsPay(0)
                 .setPointsRepay(0)
-                .setIsPointsPay(true)
                 .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder()
                         .setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK)
                         .setDetails("success")
@@ -195,7 +211,12 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         String signature = "";
         log.info("channel:{}",request.getPaymentChannelValue());
         if(request.getPaymentChannelValue()== PaymentChannel.ALIPAY_VALUE){
-            String returnStr = aliPayRequest(orderNo.toString(), actualPay);
+            String returnStr = null;
+            try {
+                returnStr = aliPayRequest(orderNo.toString(), actualPay);
+            } catch (AlipayApiException e) {
+                e.printStackTrace();
+            }
             signature = returnStr;
         }else if(request.getPaymentChannelValue() == PaymentChannel.WECHAT_VALUE){
             SortedMap sortedMap = null;
@@ -248,31 +269,25 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         return returnPoints;
     }
 
-    private String aliPayRequest(String orderNo,int shouldPAy){
-        String amount = (((double)shouldPAy) / 100)+"";
-        String subject = "尝试支付";
-        String desc = "尝试支付";
+    private String aliPayRequest(String orderNo,int shouldPAy) throws AlipayApiException {
         String notify_url = "http://dev.jifenpz.com/aliPay/notify";
-        //封装公共请求参数,这里不需要改动.
-        Map<String,String> signMap = aliPayUtil.builderAliPay(notify_url);
-//        Map<String,String> map = new HashMap<>();
-//        map.put("desc",desc);
-//        String body = gson.toJson(map);
-        AliPayRequest aliPayRequest =new AliPayRequest(amount,subject,orderNo,desc);
-        Map<String, String> bizContent = EntToMapUnit.EntToMap(aliPayRequest,aliPayRequest.getClass());
-        log.info("bizContent:{}",bizContent.toString());
-        //自定义公共参数！需要的时候放开即可
-//     PayPassParam payPassParam = new PayPassParam();
-//     Map<String, String> passback = EntToMap(payPassParam,payPassParam.getClass());
-////   bizContent.put("passback_params",gson.toJson(passback));
-//        AliPayUnit aliPayUnit = new AliPayUnit();
-        //禁止支付类型包括,如果需要禁止更多，请追加Array参数，参数来源AliPayChannelsEnum
-//        Integer [] array = new Integer[]{8};
-//        map.put("disable_pay_channels",aliPayUnit.payChannels(array));
-//        //可用支付类型,与禁用支付类型必须相斥，请追加Array参数，参数来源AliPayChannelsEnum
-//        map.put("enable_pay_channels",aliPayUnit.payChannels(array));
-        signMap.put("biz_content",gson.toJson(bizContent));
-        return aliPayUtil.createSign(signMap);
+        String serviceURl = "https://openapi.alipay.com/gateway.do";
+        AlipayClient alipayClient = new DefaultAlipayClient(serviceURl,alipayConfig.app_id , alipayConfig.private_key,"json","utf-8", alipayConfig.ali_public_key,"RSA2");
+        //实例化具体API对应的request类,类名称和接口名称对应,当前调用接口名称：alipay.trade.app.pay
+        AlipayTradeAppPayRequest request = new AlipayTradeAppPayRequest();
+        //SDK已经封装掉了公共参数，这里只需要传入业务参数。以下方法为sdk的model入参方式(model和biz_content同时存在的情况下取biz_content)。
+        AlipayTradeAppPayModel model = new AlipayTradeAppPayModel();
+        model.setBody("我是测试数据");
+        model.setSubject("App支付测试Java");
+        model.setOutTradeNo(orderNo.toString());
+        model.setTimeoutExpress("30m");
+        model.setTotalAmount(shouldPAy+"");
+        model.setProductCode("QUICK_MSECURITY_PAY");
+        request.setBizModel(model);
+        request.setNotifyUrl(notify_url);
+        //这里和普通的接口调用不同，使用的是sdkExecute
+        AlipayTradeAppPayResponse response = alipayClient.sdkExecute(request);
+        return response.getBody();
     }
 
     private SortedMap wxPayRequest(String orderNo,String shouldPay,String spbillCreateIp) throws Exception {
