@@ -104,9 +104,11 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
             storeProfile = response.getStoreProfile();
         }
         PayeeCode receiptCode = buildReceiptCode(storeProfile,code,payeeProfile);
-        ValueOperations<String, String> operations = redisTemplate.opsForValue();
-        log.info("operations:{}",operations.toString());
-        operations.set(code,"123456dasdasdsaljkdl;a");
+        List<Long> ids = new ArrayList<>();
+        ids.add(12345l);
+        ids.add(456789l);
+        BoundValueOperations<String,List<Long>> boundValueOperations =  redisTemplate.boundValueOps("captcha_img_ids_" + "12345678dsa");
+        boundValueOperations.set(ids);
         log.info("getMyPayeeCode code:{}",code);
         GetMyPayeeCodeResponse receiptCodeResponse = GetMyPayeeCodeResponse.newBuilder().setPayeeCode(receiptCode).setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK).setDetails("success")).build();
         streamObserver.onNext(receiptCodeResponse);
