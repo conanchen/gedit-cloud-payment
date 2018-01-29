@@ -44,6 +44,7 @@ import io.jsonwebtoken.Claims;
 import lombok.extern.slf4j.Slf4j;
 import org.lognet.springboot.grpc.GRpcService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.BoundValueOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
@@ -102,8 +103,8 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
             storeProfile = response.getStoreProfile();
         }
         PayeeCode receiptCode = buildReceiptCode(storeProfile,code,payeeProfile);
-        ValueOperations<String, PayeeCode> operations = redisTemplate.opsForValue();
-        operations.set(code,receiptCode,24*60*60, TimeUnit.SECONDS);
+        BoundValueOperations<String, PayeeCode> operations = redisTemplate.boundValueOps(code);
+        operations.set(receiptCode,24*60*60, TimeUnit.SECONDS);
         log.info("getMyPayeeCode code:{}",code);
         GetMyPayeeCodeResponse receiptCodeResponse = GetMyPayeeCodeResponse.newBuilder().setPayeeCode(receiptCode).setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK).setDetails("success")).build();
         streamObserver.onNext(receiptCodeResponse);
@@ -112,13 +113,13 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
     @Override
     public void getPayeeCode (GetPayeeCodeRequest request, StreamObserver<GetPayeeCodeResponse> streamObserver) {
             String code = request.getPayeeCode();
-        ValueOperations<String, PayeeCode> operations = redisTemplate.opsForValue();
-        PayeeCode o = operations.get(code);
-        PayeeCode receiptCode = PayeeCode.newBuilder().build();
+        BoundValueOperations<String, PayeeCode> operations = redisTemplate.boundValueOps(code);
+        PayeeCode receiptCode = operations.get();
+//        PayeeCode receiptCode = PayeeCode.newBuilder().build();
         com.github.conanchen.gedit.common.grpc.Status.Code returnCode;
         String msg = "";
-        if(o != null){
-            receiptCode = gson.fromJson(o.toString(),PayeeCode.class);
+        if(receiptCode != null){
+            receiptCode = gson.fromJson(receiptCode.toString(),PayeeCode.class);
             returnCode = com.github.conanchen.gedit.common.grpc.Status.Code.OK;
             msg = "success";
         }else{
@@ -139,8 +140,8 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         int pointsPay = 0;
         Claims claims = AuthInterceptor.USER_CLAIMS.get();
         String payerUuid = claims.getSubject();
-        ValueOperations<String, PayeeCode> operations = redisTemplate.opsForValue();
-        PayeeCode payeeCodeInfo = operations.get(code);
+        BoundValueOperations<String, PayeeCode> operations = redisTemplate.boundValueOps(code);
+        PayeeCode payeeCodeInfo = operations.get();
         log.info("payeeCodeInfo:{}",payeeCodeInfo);
         //todo 询问accounting系统用户积分情况
         List<RewardIfEventResponse> responseList =  accountingService.askReward(payerUuid
