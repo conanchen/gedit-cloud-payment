@@ -71,8 +71,6 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
     @Autowired
     private WXPAySign wxpAySign;
     @Autowired
-    private AliPayUtil aliPayUtil;
-    @Autowired
     private WeixinPayConfig wxPayConfig;
     @Autowired
     private PointsItemRepository itemRepository;
@@ -104,11 +102,8 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
             storeProfile = response.getStoreProfile();
         }
         PayeeCode receiptCode = buildReceiptCode(storeProfile,code,payeeProfile);
-        List<Long> ids = new ArrayList<>();
-        ids.add(12345l);
-        ids.add(456789l);
-        BoundValueOperations<String,List<Long>> boundValueOperations =  redisTemplate.boundValueOps("captcha_img_ids_" + "12345678dsa");
-        boundValueOperations.set(ids);
+        ValueOperations<String, Object> operations = redisTemplate.opsForValue();
+        operations.setIfAbsent(code,receiptCode);
         log.info("getMyPayeeCode code:{}",code);
         GetMyPayeeCodeResponse receiptCodeResponse = GetMyPayeeCodeResponse.newBuilder().setPayeeCode(receiptCode).setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK).setDetails("success")).build();
         streamObserver.onNext(receiptCodeResponse);
