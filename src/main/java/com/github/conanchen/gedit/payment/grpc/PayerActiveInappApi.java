@@ -104,6 +104,7 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         PayeeCode receiptCode = buildReceiptCode(storeProfile,code,payeeProfile);
         ValueOperations<String, PayeeCode> operations = redisTemplate.opsForValue();
         operations.set(code,receiptCode,24*60*60, TimeUnit.SECONDS);
+        log.info("getMyPayeeCode code:{}",code);
         GetMyPayeeCodeResponse receiptCodeResponse = GetMyPayeeCodeResponse.newBuilder().setPayeeCode(receiptCode).setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK).setDetails("success")).build();
         streamObserver.onNext(receiptCodeResponse);
         streamObserver.onCompleted();
@@ -133,13 +134,14 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
     public void prepare(PreparePayerInappPaymentRequest request,StreamObserver<PreparePayerInappPaymentResponse> streamObserver){
         //only called by me, 顾客扫码店员/收银员的收款码后，如果支付一定金额将会获取多少积分返还等信息
         String code = request.getPayeeCode();
+        log.info("prepare code:{}",code);
         int shouldPay = request.getShouldPay();
         int pointsPay = 0;
         Claims claims = AuthInterceptor.USER_CLAIMS.get();
         String payerUuid = claims.getSubject();
         ValueOperations<String, PayeeCode> operations = redisTemplate.opsForValue();
         PayeeCode payeeCodeInfo = operations.get(code);
-        log.info("payeeCodeInfo:{}",payeeCodeInfo.toString());
+        log.info("payeeCodeInfo:{}",payeeCodeInfo);
         //todo 询问accounting系统用户积分情况
         List<RewardIfEventResponse> responseList =  accountingService.askReward(payerUuid
                 ,payeeCodeInfo.getPayeeUuid(),payeeCodeInfo.getPayeeStoreUuid(),
