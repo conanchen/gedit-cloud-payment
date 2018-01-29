@@ -28,11 +28,9 @@ public class StoreService {
     }
 
     public StoreProfileResponse getStoreProfile(String storeUuid, Metadata header){
-        log.info("getStoreProfile header:{}",header.toString());
         profileApiStub = MetadataUtils.attachHeaders(profileApiStub, header);
         GetStoreRequest getStoreRequest = GetStoreRequest.newBuilder().setUuid(storeUuid).build();
         StoreProfileResponse response = profileApiStub.get(getStoreRequest);
-        log.info("getStoreProfile response:{}",response.toString());
         return response;
     }
 

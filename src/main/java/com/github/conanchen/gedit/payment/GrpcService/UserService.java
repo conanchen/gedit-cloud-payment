@@ -29,10 +29,8 @@ public class UserService {
 
     public UserProfileResponse getUser(Metadata header){
         profileApiStub = MetadataUtils.attachHeaders(profileApiStub,header);
-        log.info("getUser header:{}",header.toString());
         GetMyProfileRequest getMyProfileRequest = GetMyProfileRequest.newBuilder().build();
         UserProfileResponse response = profileApiStub.getMyProfile(getMyProfileRequest);
-        log.info("getUser response:{}",response.toString());
         return response;
     }
 }

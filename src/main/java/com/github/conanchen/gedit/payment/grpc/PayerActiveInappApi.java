@@ -139,6 +139,7 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         String payerUuid = claims.getSubject();
         ValueOperations<String, PayeeCode> operations = redisTemplate.opsForValue();
         PayeeCode payeeCodeInfo = operations.get(code);
+        log.info("payeeCodeInfo:{}",payeeCodeInfo.toString());
         //todo 询问accounting系统用户积分情况
         List<RewardIfEventResponse> responseList =  accountingService.askReward(payerUuid
                 ,payeeCodeInfo.getPayeeUuid(),payeeCodeInfo.getPayeeStoreUuid(),
