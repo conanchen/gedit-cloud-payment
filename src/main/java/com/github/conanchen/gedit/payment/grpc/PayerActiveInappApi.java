@@ -120,6 +120,7 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         com.github.conanchen.gedit.common.grpc.Status.Code returnCode;
         String msg = "";
         GetPayeeCodeResponse.Builder responseBuild = GetPayeeCodeResponse.newBuilder();
+        log.info("receiptCode:{}",receiptCode.toString());
         if(receiptCode != null){
             receiptCode = gson.fromJson(receiptCode.toString(),PayeeCode.class);
             returnCode = com.github.conanchen.gedit.common.grpc.Status.Code.OK;
