@@ -116,13 +116,10 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
             String code = request.getPayeeCode();
         ValueOperations<String, Object> operations = redisTemplate.opsForValue();
 //        PayeeCode receiptCode = (PayeeCode) operations.get(code);
-        PayeeCode receiptCode = PayeeCode.newBuilder().build();
+        PayeeCode receiptCode = null;
         com.github.conanchen.gedit.common.grpc.Status.Code returnCode;
         String msg = "";
         GetPayeeCodeResponse.Builder responseBuild = GetPayeeCodeResponse.newBuilder();
-        log.info("receiptCode:{}",receiptCode);
-        log.info("null != receiptCode :{}", null != receiptCode);
-        log.info("responseBuild:{}",responseBuild);
         if(null != receiptCode && !"".equals(receiptCode)){
             receiptCode = gson.fromJson(receiptCode.toString(),PayeeCode.class);
             returnCode = com.github.conanchen.gedit.common.grpc.Status.Code.OK;
