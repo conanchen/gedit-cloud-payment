@@ -47,8 +47,9 @@ public class AccountingService {
     }
 
     public void askReward(String payerUuid,String payeeUuid,
-                                                 String payeeStoreUuid,String payeeWorkerUuid,
-                                                 int shouldPay,askRewardCallback callback,GrpcApiCallback grpcApiCallback){
+                          String payeeStoreUuid,String payeeWorkerUuid,
+                          int shouldPay,askRewardCallback callback,
+                          GrpcApiCallback grpcApiCallback){
         QueryRewardsIfEventRequest.Builder request = QueryRewardsIfEventRequest.newBuilder();
         IfPaymentCreatedEvent.Builder createdEvent = IfPaymentCreatedEvent.newBuilder()
                 .setPayeeUuid(payeeUuid)
@@ -66,7 +67,7 @@ public class AccountingService {
 
             @Override
             public void onError(Throwable t) {
-                log.info("call queryRewardsIfEvent error,cause:{},error:{}",t.getCause(),t.getMessage());
+                log.info("call queryRewardsIfEvent error,cause:{},message:{}",t.getCause(),t.getMessage());
                 grpcApiCallback.onGrpcApiError(Status.newBuilder()
                         .setCode(Status.Code.OK)
                         .setDetails("系统繁忙,稍后重试")
@@ -81,7 +82,7 @@ public class AccountingService {
 
     }
 
-    public JournalResponse getJournal(int pointRepay,int pointsPay,String payerUuid,
+    public JournalResponse addJournal(int pointRepay,int pointsPay,String payerUuid,
                                       String payeeWorkerUuid,String payeeStoreUuid,String PayeeUuid,int actualPay,
                                       PaymentChannel channel,String paymentUuid){
         UpsertJournalRequest.Builder request = UpsertJournalRequest.newBuilder();
