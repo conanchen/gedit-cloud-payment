@@ -119,18 +119,20 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         PayeeCode receiptCode = PayeeCode.newBuilder().build();
         com.github.conanchen.gedit.common.grpc.Status.Code returnCode;
         String msg = "";
+        GetPayeeCodeResponse.Builder responseBuild = GetPayeeCodeResponse.newBuilder();
         if(receiptCode != null){
             receiptCode = gson.fromJson(receiptCode.toString(),PayeeCode.class);
             returnCode = com.github.conanchen.gedit.common.grpc.Status.Code.OK;
             msg = "success";
+            responseBuild.setPayeeCode(receiptCode);
         }else{
             returnCode = com.github.conanchen.gedit.common.grpc.Status.Code.OUT_OF_RANGE;
             msg = "支付码过期,请收银员刷新二维码！";
         }
-        GetPayeeCodeResponse response = GetPayeeCodeResponse.newBuilder().setPayeeCode(receiptCode)
-                .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(returnCode)
+
+        responseBuild.setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(returnCode)
                         .setDetails(msg).build()).build();
-        streamObserver.onNext(response);
+        streamObserver.onNext(responseBuild.build());
     }
     @Override
     public void prepare(PreparePayerInappPaymentRequest request,StreamObserver<PreparePayerInappPaymentResponse> streamObserver){
