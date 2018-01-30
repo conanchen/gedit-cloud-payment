@@ -24,6 +24,7 @@ import com.github.conanchen.gedit.payment.config.wxpay.weixinPayUtil.MD5Util;
 import com.github.conanchen.gedit.payment.config.wxpay.weixinPayUtil.WXPAySign;
 import com.github.conanchen.gedit.payment.grpc.interceptor.AuthInterceptor;
 import com.github.conanchen.gedit.payment.model.Payment;
+import com.github.conanchen.gedit.payment.model.PaymentCode;
 import com.github.conanchen.gedit.payment.model.Points;
 import com.github.conanchen.gedit.payment.model.PointsItem;
 import com.github.conanchen.gedit.payment.repository.PaymentRepository;
@@ -45,6 +46,7 @@ import io.grpc.stub.StreamObserver;
 import io.jsonwebtoken.Claims;
 import lombok.extern.slf4j.Slf4j;
 import org.lognet.springboot.grpc.GRpcService;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.BoundValueOperations;
 import org.springframework.data.redis.core.HashOperations;
@@ -104,7 +106,10 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
             storeProfile = response.getStoreProfile();
         }
         PayeeCode payeeCode = buildReceiptCode(storeProfile,code,payeeProfile);
-        Map<String,String> redisMap = EntToMapUnit.EntToMap(payeeCode,PayeeCode.class);
+        PaymentCode paymentCode = new PaymentCode();
+        BeanUtils.copyProperties(payeeCode,paymentCode);
+        log.info("paymentCode:{}",paymentCode);
+        Map<String,String> redisMap = EntToMapUnit.EntToMap(paymentCode,PaymentCode.class);
         redisTemplate.opsForHash().putAll(code,redisMap);
         log.info("getMyPayeeCode code:{}",code);
         GetMyPayeeCodeResponse receiptCodeResponse = GetMyPayeeCodeResponse.newBuilder().setPayeeCode(payeeCode).setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK).setDetails("success")).build();
