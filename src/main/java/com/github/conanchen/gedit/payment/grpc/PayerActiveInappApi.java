@@ -154,7 +154,7 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
                 }, new GrpcApiCallback() {
                     @Override
                     public void onGrpcApiError(Status status) {
-                        log.error("询问积分系统出错，{}",status);
+                        log.error("询问积分系统出错，{}",status.getDetails());
                     }
 
                     @Override
