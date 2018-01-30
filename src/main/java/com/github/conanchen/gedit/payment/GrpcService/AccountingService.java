@@ -12,6 +12,8 @@ import com.github.conanchen.gedit.accounting.rewardsif.grpc.IfPaymentCreatedEven
 import com.github.conanchen.gedit.accounting.rewardsif.grpc.QueryRewardsIfEventRequest;
 import com.github.conanchen.gedit.accounting.rewardsif.grpc.RewardIfEventResponse;
 import com.github.conanchen.gedit.common.grpc.PaymentChannel;
+import com.github.conanchen.gedit.common.grpc.Status;
+import com.github.conanchen.gedit.payment.GrpcService.callback.GrpcApiCallback;
 import com.github.conanchen.gedit.payment.model.Points;
 import io.grpc.Channel;
 import io.grpc.ManagedChannelBuilder;
@@ -31,8 +33,6 @@ public class AccountingService {
 
     private AccountingRewardsIfEventApiGrpc.AccountingRewardsIfEventApiStub eventApiStub;
 
-    private List<RewardIfEventResponse> responseList = new ArrayList<>();
-
     private JournalResponse journalResponse = JournalResponse.newBuilder().build();
 
     @PostConstruct
@@ -42,7 +42,13 @@ public class AccountingService {
         eventApiStub = AccountingRewardsIfEventApiGrpc.newStub(channel);
     }
 
-    public List<RewardIfEventResponse> askReward(String payerUuid,String payeeUuid,String payeeStoreUuid,String payeeWorkerUuid,int shouldPay){
+    public interface askRewardCallback{
+        void onAccountResponse(List<RewardIfEventResponse> response);
+    }
+
+    public void askReward(String payerUuid,String payeeUuid,
+                                                 String payeeStoreUuid,String payeeWorkerUuid,
+                                                 int shouldPay,askRewardCallback callback,GrpcApiCallback grpcApiCallback){
         QueryRewardsIfEventRequest.Builder request = QueryRewardsIfEventRequest.newBuilder();
         IfPaymentCreatedEvent.Builder createdEvent = IfPaymentCreatedEvent.newBuilder()
                 .setPayeeUuid(payeeUuid)
@@ -54,21 +60,25 @@ public class AccountingService {
         eventApiStub.queryRewardsIfEvent(request.build(), new StreamObserver<RewardIfEventResponse>() {
             @Override
             public void onNext(RewardIfEventResponse value) {
-                responseList.add(value);
+                List<RewardIfEventResponse> responseList = new ArrayList<>();
+                callback.onAccountResponse(responseList);
             }
 
             @Override
             public void onError(Throwable t) {
                 log.info("call queryRewardsIfEvent error,cause:{},error:{}",t.getCause(),t.getMessage());
+                grpcApiCallback.onGrpcApiError(Status.newBuilder()
+                        .setCode(Status.Code.OK)
+                        .setDetails("系统繁忙,稍后重试")
+                        .build());
             }
 
             @Override
             public void onCompleted() {
-                return;
+                grpcApiCallback.onGrpcApiCompleted();
             }
         });
 
-        return responseList;
     }
 
     public JournalResponse getJournal(int pointRepay,int pointsPay,String payerUuid,

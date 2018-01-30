@@ -8,10 +8,12 @@ import com.alipay.api.request.AlipayTradeAppPayRequest;
 import com.alipay.api.response.AlipayTradeAppPayResponse;
 import com.github.conanchen.gedit.accounting.rewardsif.grpc.RewardIfEventResponse;
 import com.github.conanchen.gedit.common.grpc.PaymentChannel;
+import com.github.conanchen.gedit.common.grpc.Status;
 import com.github.conanchen.gedit.payer.activeinapp.grpc.*;
 import com.github.conanchen.gedit.payment.GrpcService.AccountingService;
 import com.github.conanchen.gedit.payment.GrpcService.StoreService;
 import com.github.conanchen.gedit.payment.GrpcService.UserService;
+import com.github.conanchen.gedit.payment.GrpcService.callback.GrpcApiCallback;
 import com.github.conanchen.gedit.payment.PaymentEnum.PaymentStatusEnum;
 import com.github.conanchen.gedit.payment.common.grpc.PaymentResponse;
 import com.github.conanchen.gedit.payment.config.alipay.alipayConfig.AlipayConfig;
@@ -143,9 +145,21 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         PayeeCode payeeCodeInfo = (PayeeCode) operations.get(code);
         log.info("payeeCodeInfo:{}",payeeCodeInfo);
         //todo 询问accounting系统用户积分情况
-        List<RewardIfEventResponse> responseList =  accountingService.askReward(payerUuid
-                ,payeeCodeInfo.getPayeeUuid(),payeeCodeInfo.getPayeeStoreUuid(),
-                payeeCodeInfo.getPayeeWorkerUuid(),shouldPay);
+        accountingService.askReward(payerUuid
+                , payeeCodeInfo.getPayeeUuid(), payeeCodeInfo.getPayeeStoreUuid(),
+                payeeCodeInfo.getPayeeWorkerUuid(), shouldPay, (List<RewardIfEventResponse> responses)->{
+                   log.info("askReward responses:{}",responses.toString());
+                }, new GrpcApiCallback() {
+                    @Override
+                    public void onGrpcApiError(Status status) {
+                        log.error("询问积分系统出错，{}",status);
+                    }
+
+                    @Override
+                    public void onGrpcApiCompleted() {
+                        log.info("call method askReward is completed");
+                    }
+                });
         PreparePayerInappPaymentResponse response = PreparePayerInappPaymentResponse.newBuilder()
                 .setActualPay(0)
                 .setPayeeCode(code)
@@ -275,11 +289,22 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
     private String aliPayRequest(String orderNo,int shouldPAy) throws AlipayApiException {
         String notify_url = "http://dev.jifenpz.com/aliPay/notify";
         String serviceURl = "https://openapi.alipay.com/gateway.do";
-        AlipayClient alipayClient = new DefaultAlipayClient(serviceURl,alipayConfig.app_id , alipayConfig.private_key,"json","utf-8", alipayConfig.ali_public_key,"RSA2");
+        AlipayClient alipayClient = new DefaultAlipayClient(serviceURl,alipayConfig.app_id ,
+                alipayConfig.private_key,"json","utf-8", alipayConfig.ali_public_key,"RSA2");
         //实例化具体API对应的request类,类名称和接口名称对应,当前调用接口名称：alipay.trade.app.pay
         AlipayTradeAppPayRequest request = new AlipayTradeAppPayRequest();
-        //SDK已经封装掉了公共参数，这里只需要传入业务参数。以下方法为sdk的model入参方式(model和biz_content同时存在的情况下取biz_content)。
         AlipayTradeAppPayModel model = new AlipayTradeAppPayModel();
+//      PayPassParam payPassParam = new PayPassParam();
+//      Map<String, String> passback = EntToMap(payPassParam,payPassParam.getClass());
+//      model.setPassbackParams(gson.toJson(passback));
+//      AliPayUnit aliPayUnit = new AliPayUnit();
+        //禁止支付类型包括,如果需要禁止更多，请追加Array参数，参数来源AliPayChannelsEnum
+//      Integer [] array = new Integer[]{8};
+//      model.setDisablePayChannels(aliPayUnit.payChannels(array));
+//        //可用支付类型,与禁用支付类型必须相斥，请追加Array参数，参数来源AliPayChannelsEnum
+//      model.setEnablePayChannels(aliPayUnit.payChannels(array));
+        //SDK已经封装掉了公共参数，这里只需要传入业务参数。以下方法为sdk的model入参方式(model和biz_content同时存在的情况下取biz_content)。
+
         model.setBody("我是测试数据");
         model.setSubject("App支付测试Java");
         model.setOutTradeNo(orderNo.toString());
