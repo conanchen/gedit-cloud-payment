@@ -115,8 +115,8 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
     public void getPayeeCode (GetPayeeCodeRequest request, StreamObserver<GetPayeeCodeResponse> streamObserver) {
             String code = request.getPayeeCode();
         ValueOperations<String, Object> operations = redisTemplate.opsForValue();
-        PayeeCode receiptCode = (PayeeCode) operations.get(code);
-//        PayeeCode receiptCode = PayeeCode.newBuilder().build();
+//        PayeeCode receiptCode = (PayeeCode) operations.get(code);
+        PayeeCode receiptCode = PayeeCode.newBuilder().build();
         com.github.conanchen.gedit.common.grpc.Status.Code returnCode;
         String msg = "";
         if(receiptCode != null){
