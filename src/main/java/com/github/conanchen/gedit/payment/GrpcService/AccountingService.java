@@ -37,7 +37,7 @@ public class AccountingService {
 
     @PostConstruct
     public void initRequest(){
-        Channel channel =  ManagedChannelBuilder.forAddress("118.178.237.46", 9981).usePlaintext(true).build();
+        Channel channel =  ManagedChannelBuilder.forAddress("118.178.237.46", 9983).usePlaintext(true).build();
         accountApiStub = AccountingJournalApiGrpc.newStub(channel);
         eventApiStub = AccountingRewardsIfEventApiGrpc.newStub(channel);
     }
