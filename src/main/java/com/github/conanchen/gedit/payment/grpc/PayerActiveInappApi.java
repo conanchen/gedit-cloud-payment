@@ -143,13 +143,13 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         int pointsPay = 0;
         Claims claims = AuthInterceptor.USER_CLAIMS.get();
         String payerUuid = claims.getSubject();
-        ValueOperations<String, Object> operations = redisTemplate.opsForValue();
-        PayeeCode payeeCodeInfo = (PayeeCode) operations.get(code);
-        log.info("payeeCodeInfo:{}",payeeCodeInfo);
+//        ValueOperations<String, Object> operations = redisTemplate.opsForValue();
+//        PayeeCode payeeCodeInfo = (PayeeCode) operations.get(code);
+//        log.info("payeeCodeInfo:{}",payeeCodeInfo);
         //todo 询问accounting系统用户积分情况
         accountingService.askReward(payerUuid
-                , payeeCodeInfo.getPayeeUuid(), payeeCodeInfo.getPayeeStoreUuid(),
-                payeeCodeInfo.getPayeeWorkerUuid(), shouldPay, (List<RewardIfEventResponse> responses)->{
+                , "00df85b9975849c98784570ef511bc72", "00df85b9975849c98784570ef511bc72",
+                "00df85b9975849c98784570ef511bc72", shouldPay, (List<RewardIfEventResponse> responses)->{
                    log.info("askReward responses:{}",responses.toString());
                 }, new GrpcApiCallback() {
                     @Override
