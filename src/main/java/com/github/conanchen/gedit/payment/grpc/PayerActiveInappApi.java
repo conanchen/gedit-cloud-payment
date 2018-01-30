@@ -103,11 +103,11 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         if(response.hasStoreProfile()){
             storeProfile = response.getStoreProfile();
         }
-        PayeeCode receiptCode = buildReceiptCode(storeProfile,code,payeeProfile);
-        ValueOperations<String, Object> operations = redisTemplate.opsForValue();
-        operations.setIfAbsent(code,receiptCode);
+        PayeeCode payeeCode = buildReceiptCode(storeProfile,code,payeeProfile);
+        Map<String,String> redisMap = EntToMapUnit.EntToMap(payeeCode,PayeeCode.class);
+        redisTemplate.opsForHash().putAll(code,redisMap);
         log.info("getMyPayeeCode code:{}",code);
-        GetMyPayeeCodeResponse receiptCodeResponse = GetMyPayeeCodeResponse.newBuilder().setPayeeCode(receiptCode).setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK).setDetails("success")).build();
+        GetMyPayeeCodeResponse receiptCodeResponse = GetMyPayeeCodeResponse.newBuilder().setPayeeCode(payeeCode).setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK).setDetails("success")).build();
         streamObserver.onNext(receiptCodeResponse);
         streamObserver.onCompleted();
     }
