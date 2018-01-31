@@ -91,6 +91,7 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
     @Override
     public void getMyPayeeCode (GetMyPayeeCodeRequest request, StreamObserver<GetMyPayeeCodeResponse> streamObserver){
         //only called by me,例如店员/收银员app调用本api生成收款码供顾客扫码支付
+        GetMyPayeeCodeResponse.Builder responseBuild = GetMyPayeeCodeResponse.newBuilder();
         String payeeStoreUuid = request.getPayeeStoreUuid();
         String code ="";
         UserProfile payeeProfile = UserProfile.newBuilder().build();
@@ -104,6 +105,10 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
             code = MD5Util.MD5Encode(payeeStoreUuid,"utf-8").toUpperCase();
             log.info("payeeStoreUuid:{},code:{}",payeeStoreUuid,code);
         } catch (Exception e) {
+            Status status = Status.newBuilder().setCode(Status.Code.NOT_FOUND).setDetails("系统繁忙,稍后重试！").build();
+            streamObserver.onNext(responseBuild.setStatus(status).build());
+            streamObserver.onCompleted();
+            return;
         }
         StoreProfile storeProfile = StoreProfile.newBuilder().build();
         StoreProfileResponse response = storeService.getStoreProfile(request.getPayeeStoreUuid(),header);
@@ -118,7 +123,10 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         Map<String,String> redisMap = EntToMapUnit.EntToMap(paymentCode,PaymentCode.class);
         log.info("redisMap:{}",redisMap.toString());
         redisSetMap.setCacheMap(code,redisMap);
-        GetMyPayeeCodeResponse receiptCodeResponse = GetMyPayeeCodeResponse.newBuilder().setPayeeCode(payeeCode).setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK).setDetails("success")).build();
+        GetMyPayeeCodeResponse receiptCodeResponse = responseBuild.setPayeeCode(payeeCode)
+                .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().
+                        setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK).
+                        setDetails("success")).build();
         streamObserver.onNext(receiptCodeResponse);
         streamObserver.onCompleted();
     }
@@ -127,7 +135,7 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
             String code = request.getPayeeCode();
         Map<String,String> map = redisSetMap.getCacheMap(code);
         log.info("redis get map :{}",map.toString());
-        PayeeCode receiptCode = null;
+        PayeeCode receiptCode = MapToEnt(map).build();
         com.github.conanchen.gedit.common.grpc.Status.Code returnCode;
         String msg = "";
         GetPayeeCodeResponse.Builder responseBuild = GetPayeeCodeResponse.newBuilder();
@@ -154,14 +162,30 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         int pointsPay = 0;
         Claims claims = AuthInterceptor.USER_CLAIMS.get();
         String payerUuid = claims.getSubject();
-//        ValueOperations<String, Object> operations = redisTemplate.opsForValue();
-//        PayeeCode payeeCodeInfo = (PayeeCode) operations.get(code);
-//        log.info("payeeCodeInfo:{}",payeeCodeInfo);
+        Map<String,String> map = redisSetMap.getCacheMap(code);
+        log.info("redis get map :{}",map.toString());
         //todo 询问accounting系统用户积分情况
         accountingService.askReward(payerUuid
-                , "00df85b9975849c98784570ef511bc72", "00df85b9975849c98784570ef511bc72",
-                "00df85b9975849c98784570ef511bc72", shouldPay, (List<RewardIfEventResponse> responses)->{
+                , map.get("payeeUuid"),  map.get("payeeStoreUuid"),
+                map.get("payeeWorkerUuid"), shouldPay, (List<RewardIfEventResponse> responses)->{
                    log.info("askReward responses:{}",responses.toString());
+                    PreparePayerInappPaymentResponse response = PreparePayerInappPaymentResponse.newBuilder()
+                            .setActualPay(0)
+                            .setPayeeCode(code)
+                            .setPayeeName("dsa")
+                            .setPayeeStoreName("kdhas")
+                            .setPayeeWorkerName("kdhsajkgduk")
+                            .setShouldPay(1)
+                            .setActualPay(0)
+                            .setPointsPay(0)
+                            .setPointsRepay(0)
+                            .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder()
+                                    .setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK)
+                                    .setDetails("success")
+                                    .build())
+                            .build();
+                    streamObserver.onNext(response);
+                    streamObserver.onCompleted();
                 }, new GrpcApiCallback() {
                     @Override
                     public void onGrpcApiError(Status status) {
@@ -173,23 +197,6 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
                         log.info("call method askReward is completed");
                     }
                 });
-        PreparePayerInappPaymentResponse response = PreparePayerInappPaymentResponse.newBuilder()
-                .setActualPay(0)
-                .setPayeeCode(code)
-                .setPayeeName("dsa")
-                .setPayeeStoreName("kdhas")
-                .setPayeeWorkerName("kdhsajkgduk")
-                .setShouldPay(1)
-                .setActualPay(0)
-                .setPointsPay(0)
-                .setPointsRepay(0)
-                .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder()
-                        .setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK)
-                        .setDetails("success")
-                        .build())
-                .build();
-        streamObserver.onNext(response);
-        streamObserver.onCompleted();
     }
 
     @Override
@@ -265,6 +272,22 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
                 .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK).setDetails("sucess")).build();
         responseObserver.onNext(paymentResponse);
         responseObserver.onCompleted();
+    }
+
+
+    private PayeeCode.Builder MapToEnt(Map<String,String> map){
+        PayeeCode.Builder  payeeCodeBuild = PayeeCode.newBuilder();
+        payeeCodeBuild.setExpiresIn(Long.parseLong(map.get("expiresIn")));
+        payeeCodeBuild.setPayeeLogo(map.get("payeeLogo"));
+        payeeCodeBuild.setPayeeName(map.get("payeeName"));
+        payeeCodeBuild.setPayeeStoreLogo(map.get("payeeStoreLogo"));
+        payeeCodeBuild.setPayeeStoreNamee(map.get("payeeStoreName"));
+        payeeCodeBuild.setPayeeStoreUuid(map.get("payeeStoreUuid"));
+        payeeCodeBuild.setPayeeUuid(map.get("payeeUuid"));
+        payeeCodeBuild.setPayeeCode(map.get("payeeCode"));
+        payeeCodeBuild.setPayeeWorkerLogo(map.get("payeeWorkerLogo"));
+        payeeCodeBuild.setPayeeWorkerUuid(map.get("payeeWorkerUuid"));
+        return payeeCodeBuild;
     }
 
     private PayeeCode buildReceiptCode(StoreProfile storeProfile,String code,UserProfile payeeProfile){
