@@ -3,7 +3,7 @@ package com.github.conanchen.gedit.payment.model;
 public class PaymentCode {
 
     private volatile String payeeCode;
-    private long expiresIn_;
+    private long expiresIn;
     private volatile String payeeUuid;
     private volatile String payeeLogo;
     private volatile String payeeName;
@@ -22,12 +22,12 @@ public class PaymentCode {
         this.payeeCode = payeeCode;
     }
 
-    public long getExpiresIn_() {
-        return expiresIn_;
+    public long getExpiresIn() {
+        return expiresIn;
     }
 
-    public void setExpiresIn_(long expiresIn_) {
-        this.expiresIn_ = expiresIn_;
+    public void setExpiresIn(long expiresIn) {
+        this.expiresIn = expiresIn;
     }
 
     public String getPayeeUuid() {
