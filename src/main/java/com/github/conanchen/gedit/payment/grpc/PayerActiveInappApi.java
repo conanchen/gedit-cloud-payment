@@ -135,7 +135,6 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         String msg = "";
         GetPayeeCodeResponse.Builder responseBuild = GetPayeeCodeResponse.newBuilder();
         if(null != receiptCode && !"".equals(receiptCode)){
-            receiptCode = gson.fromJson(receiptCode.toString(),PayeeCode.class);
             returnCode = com.github.conanchen.gedit.common.grpc.Status.Code.OK;
             msg = "success";
             responseBuild.setPayeeCode(receiptCode);
