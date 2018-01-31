@@ -9,7 +9,7 @@ public class PaymentCode {
     private volatile String payeeName;
     private volatile String payeeStoreUuid;
     private volatile String payeeStoreLogo;
-    private volatile String payeeStoreNamee;
+    private volatile String payeeStoreName;
     private volatile String payeeWorkerUuid;
     private volatile String payeeWorkerLogo;
     private volatile String payeeWorkerName;
@@ -70,12 +70,12 @@ public class PaymentCode {
         this.payeeStoreLogo = payeeStoreLogo;
     }
 
-    public String getPayeeStoreNamee() {
-        return payeeStoreNamee;
+    public String getPayeeStoreName() {
+        return payeeStoreName;
     }
 
-    public void setPayeeStoreNamee(String payeeStoreNamee) {
-        this.payeeStoreNamee = payeeStoreNamee;
+    public void setPayeeStoreName(String payeeStoreName) {
+        this.payeeStoreName = payeeStoreName;
     }
 
     public String getPayeeWorkerUuid() {
