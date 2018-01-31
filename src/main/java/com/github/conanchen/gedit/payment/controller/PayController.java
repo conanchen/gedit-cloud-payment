@@ -1,5 +1,6 @@
 package com.github.conanchen.gedit.payment.controller;
 
+import com.alipay.api.AlipayApiException;
 import com.github.conanchen.gedit.payment.service.PayService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -21,7 +22,7 @@ public class PayController {
     private PayService payService;
 
     @RequestMapping(value = "aliPay/notify",method = RequestMethod.POST)
-    public void aliPayNotify(HttpServletRequest request, HttpServletResponse response)throws IOException {
+    public void aliPayNotify(HttpServletRequest request, HttpServletResponse response) throws IOException, AlipayApiException {
         payService.aliPayNotify(request,response);
     }
 
