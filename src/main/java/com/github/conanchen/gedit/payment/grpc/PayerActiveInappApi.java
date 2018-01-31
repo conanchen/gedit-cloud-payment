@@ -31,6 +31,7 @@ import com.github.conanchen.gedit.payment.repository.PaymentRepository;
 import com.github.conanchen.gedit.payment.repository.PointsItemRepository;
 import com.github.conanchen.gedit.payment.repository.PointsRepository;
 import com.github.conanchen.gedit.payment.unit.EntToMapUnit;
+import com.github.conanchen.gedit.payment.unit.RedisSetMap;
 import com.github.conanchen.gedit.payment.unit.SerialNumber;
 import com.github.conanchen.gedit.payment.validate.PaymentValidate;
 import com.github.conanchen.gedit.store.profile.grpc.StoreProfile;
@@ -83,6 +84,8 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
 
     @Autowired
     private AlipayConfig alipayConfig;
+    @Autowired
+    private RedisSetMap redisSetMap;
 
     @Override
     public void getMyPayeeCode (GetMyPayeeCodeRequest request, StreamObserver<GetMyPayeeCodeResponse> streamObserver){
@@ -112,7 +115,7 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         log.info("getMyPayeeCode code:{}",code);
         Map<String,String> redisMap = EntToMapUnit.EntToMap(paymentCode,PaymentCode.class);
         log.info("redisMap:{}",redisMap.toString());
-        redisTemplate.opsForHash().putAll("123456789",redisMap);
+        redisSetMap.setCacheMap(code,redisMap);
         GetMyPayeeCodeResponse receiptCodeResponse = GetMyPayeeCodeResponse.newBuilder().setPayeeCode(payeeCode).setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK).setDetails("success")).build();
         streamObserver.onNext(receiptCodeResponse);
         streamObserver.onCompleted();
@@ -120,8 +123,8 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
     @Override
     public void getPayeeCode (GetPayeeCodeRequest request, StreamObserver<GetPayeeCodeResponse> streamObserver) {
             String code = request.getPayeeCode();
-        ValueOperations<String, Object> operations = redisTemplate.opsForValue();
-//        PayeeCode receiptCode = (PayeeCode) operations.get(code);
+        Map<String,String> map = redisSetMap.getCacheMap(code);
+        log.info("redis get map :{}",map.toString());
         PayeeCode receiptCode = null;
         com.github.conanchen.gedit.common.grpc.Status.Code returnCode;
         String msg = "";
