@@ -17,8 +17,6 @@ import com.github.conanchen.gedit.payment.GrpcService.callback.GrpcApiCallback;
 import com.github.conanchen.gedit.payment.PaymentEnum.PaymentStatusEnum;
 import com.github.conanchen.gedit.payment.common.grpc.PaymentResponse;
 import com.github.conanchen.gedit.payment.config.alipay.alipayConfig.AlipayConfig;
-import com.github.conanchen.gedit.payment.config.alipay.alipayUnit.AliPayRequest;
-import com.github.conanchen.gedit.payment.config.alipay.alipayUnit.AliPayUtil;
 import com.github.conanchen.gedit.payment.config.wxpay.weixinPayConfig.WeixinPayConfig;
 import com.github.conanchen.gedit.payment.config.wxpay.weixinPayUtil.MD5Util;
 import com.github.conanchen.gedit.payment.config.wxpay.weixinPayUtil.WXPAySign;
@@ -49,14 +47,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.lognet.springboot.grpc.GRpcService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.BoundValueOperations;
-import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
-import sun.security.provider.MD5;
 
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @GRpcService
