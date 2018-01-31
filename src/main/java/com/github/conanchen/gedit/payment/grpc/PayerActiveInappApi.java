@@ -111,7 +111,7 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         log.info("paymentCode:{}",paymentCode);
         log.info("getMyPayeeCode code:{}",code);
         Map<String,String> redisMap = EntToMapUnit.EntToMap(paymentCode,PaymentCode.class);
-        redisTemplate.opsForHash().putAll(code,redisMap);
+        redisTemplate.opsForHash().putAll("123456789",redisMap);
         GetMyPayeeCodeResponse receiptCodeResponse = GetMyPayeeCodeResponse.newBuilder().setPayeeCode(payeeCode).setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK).setDetails("success")).build();
         streamObserver.onNext(receiptCodeResponse);
         streamObserver.onCompleted();
