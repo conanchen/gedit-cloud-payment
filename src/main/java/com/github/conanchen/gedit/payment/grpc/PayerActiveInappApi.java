@@ -53,6 +53,7 @@ import org.springframework.data.redis.core.BoundValueOperations;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import sun.security.provider.MD5;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -100,7 +101,8 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
             payeeProfile = userProfileResponse.getUserProfile();
         }
         try {
-            code = MD5Util.MD5Encode(payeeStoreUuid,"utf-8");
+            code = MD5Util.MD5Encode(payeeStoreUuid,"utf-8").toUpperCase();
+            log.info("payeeStoreUuid:{},code:{}",payeeStoreUuid,code);
         } catch (Exception e) {
         }
         StoreProfile storeProfile = StoreProfile.newBuilder().build();
