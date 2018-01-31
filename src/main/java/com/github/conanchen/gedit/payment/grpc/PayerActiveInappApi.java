@@ -272,16 +272,16 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
 
     private PayeeCode.Builder MapToEnt(Map<String,String> map){
         PayeeCode.Builder  payeeCodeBuild = PayeeCode.newBuilder();
-        payeeCodeBuild.setExpiresIn(Long.parseLong(map.get("expiresIn")));
-        payeeCodeBuild.setPayeeLogo(map.get("payeeLogo"));
-        payeeCodeBuild.setPayeeName(map.get("payeeName"));
-        payeeCodeBuild.setPayeeStoreLogo(map.get("payeeStoreLogo"));
-        payeeCodeBuild.setPayeeStoreNamee(map.get("payeeStoreName"));
-        payeeCodeBuild.setPayeeStoreUuid(map.get("payeeStoreUuid"));
-        payeeCodeBuild.setPayeeUuid(map.get("payeeUuid"));
-        payeeCodeBuild.setPayeeCode(map.get("payeeCode"));
-        payeeCodeBuild.setPayeeWorkerLogo(map.get("payeeWorkerLogo"));
-        payeeCodeBuild.setPayeeWorkerUuid(map.get("payeeWorkerUuid"));
+        payeeCodeBuild.setExpiresIn(Long.parseLong(map.get("expiresIn")== null ? "-1":map.get("expiresIn")));
+        payeeCodeBuild.setPayeeLogo(map.get("payeeLogo") == null?"":map.get("payeeLogo"));
+        payeeCodeBuild.setPayeeName(map.get("payeeName") == null?"":map.get("payeeName"));
+        payeeCodeBuild.setPayeeStoreLogo(map.get("payeeStoreLogo") == null?"":map.get("payeeStoreLogo"));
+        payeeCodeBuild.setPayeeStoreNamee(map.get("payeeStoreName")==null?"":map.get("payeeStoreName"));
+        payeeCodeBuild.setPayeeStoreUuid(map.get("payeeStoreUuid") == null? "" :map.get("payeeStoreUuid"));
+        payeeCodeBuild.setPayeeUuid(map.get("payeeUuid") == null ? "" :map.get("payeeStoreUuid"));
+        payeeCodeBuild.setPayeeCode(map.get("payeeCode") == null ? "" : map.get("payeeCode"));
+        payeeCodeBuild.setPayeeWorkerLogo(map.get("payeeWorkerLogo") == null ? "" : map.get("payeeWorkerLogo"));
+        payeeCodeBuild.setPayeeWorkerUuid(map.get("payeeWorkerUuid") == null ? "" :map.get("payeeWorkerUuid"));
         return payeeCodeBuild;
     }
 
