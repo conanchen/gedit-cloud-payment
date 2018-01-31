@@ -1,5 +1,12 @@
 package com.github.conanchen.gedit.payment.service;
 
+import com.alipay.api.AlipayApiException;
+import com.alipay.api.internal.util.AlipaySignature;
+import com.github.conanchen.gedit.accounting.journal.grpc.JournalResponse;
+import com.github.conanchen.gedit.common.grpc.PaymentChannel;
+import com.github.conanchen.gedit.common.grpc.Status;
+import com.github.conanchen.gedit.payment.GrpcService.AccountingService;
+import com.github.conanchen.gedit.payment.GrpcService.callback.GrpcApiCallback;
 import com.github.conanchen.gedit.payment.PaymentEnum.BillEnum;
 import com.github.conanchen.gedit.payment.PaymentEnum.PaymentStatusEnum;
 import com.github.conanchen.gedit.payment.config.alipay.alipayConfig.AlipayConfig;
@@ -41,18 +48,19 @@ public class PayService {
     private AlipayConfig alipayConfig;
     @Autowired
     private WXPayConfig wxConfig;
+    @Autowired
+    private AccountingService accountingService;
 
-    public void aliPayNotify(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    public void aliPayNotify(HttpServletRequest request, HttpServletResponse response) throws IOException, AlipayApiException {
         log.info("支付宝异步通知开始");
         String flagStr = "success";
         Map<String,String> requestMap = parseAliPayRequest(request);
         log.info("支付宝异步通知参数:{}",gson.toJson(requestMap));
         String returnSign = requestMap.get("sign");
         log.info("支付宝异步通知签名:{}",returnSign);
-        requestMap.remove("sign");//将sign和sign_type从参数中移除,因为验证sign的时候该两个值不参与
-        requestMap.remove("sign_type");
         String  requestStr = AlipayCore.createLinkString(requestMap);
-        if(RSA.verify(requestStr,returnSign, alipayConfig.ali_public_key,"utf-8")){
+        if(AlipaySignature.rsaCheckV1(requestMap, alipayConfig.ali_public_key,
+                "UTF-8","RSA2")){
             String orderNo = requestMap.get("out_trade_no");
             if(requestMap.get("trade_status").equals("TRADE_SUCCESS")){
                 String channelId  = requestMap.get("trade_no");
@@ -129,6 +137,16 @@ public class PayService {
                 pointsItem.setStatus(PaymentStatusEnum.OK.getCode());
                 itemRepository.save(pointsItem);
                 billService.addPaymentBill(payment.getActualPay(),channelId,orderNo,BillEnum.CONSUME);
+                int pointRepay = 0;
+                int pointPay = 0;
+                if(payment.getPoints() > 0){
+                    pointRepay = payment.getPoints();
+                }else{
+                    pointPay = 0 - payment.getPoints();
+                }
+                accountingService.addJournal(pointRepay,pointPay,payment.getPayerId(),
+                        payment.getPayeeWorkerId(),payment.getPayeeWorkerId(),payment.getPayeeId(),
+                        payment.getActualPay(),PaymentChannel.valueOf(payment.getChannel()),payment.getUuid());
             }
         }
     }
