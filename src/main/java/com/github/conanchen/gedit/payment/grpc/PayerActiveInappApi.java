@@ -225,7 +225,7 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         Integer actualPay = request.getActualPay();
         Payment payObject = addPayment(request,orderNo,payerUuid,request.getPointsRepay(),actualPay);
         log.info("create payObject :{}",payObject.toString());
-        if(request.getPointsPay() < 0){
+        if(request.getPointsPay() <= 0){
             accountingService.lockPoints(payerUuid, payObject.getUuid(), request.getPointsPay(), new AccountingService.LockPointCallback() {
                 @Override
                 public void onAccountResponse(LockPointsResponse response) {
