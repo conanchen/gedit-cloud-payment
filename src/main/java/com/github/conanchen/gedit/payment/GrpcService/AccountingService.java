@@ -1,7 +1,7 @@
 package com.github.conanchen.gedit.payment.GrpcService;
 
 
-import com.github.conanchen.gedit.accounting.account.grpc.AccountingAccountApiGrpc;
+import com.github.conanchen.gedit.accounting.account.grpc.*;
 import com.github.conanchen.gedit.accounting.event.grpc.AccountingEventApiGrpc;
 import com.github.conanchen.gedit.accounting.event.grpc.PaymentCreatedEvent;
 import com.github.conanchen.gedit.accounting.journal.grpc.AccountingJournalApiGrpc;
@@ -30,6 +30,7 @@ import java.util.List;
 public class AccountingService {
 
     private AccountingJournalApiGrpc.AccountingJournalApiStub accountApiStub;
+    private AccountingAccountApiGrpc.AccountingAccountApiStub accountingAccountApiStub;
 
     private AccountingRewardsIfEventApiGrpc.AccountingRewardsIfEventApiStub eventApiStub;
 
@@ -40,16 +41,24 @@ public class AccountingService {
         Channel channel =  ManagedChannelBuilder.forAddress("118.178.237.46", 9983).usePlaintext(true).build();
         accountApiStub = AccountingJournalApiGrpc.newStub(channel);
         eventApiStub = AccountingRewardsIfEventApiGrpc.newStub(channel);
+        accountingAccountApiStub = AccountingAccountApiGrpc.newStub(channel);
     }
 
-    public interface askRewardCallback{
+    public interface AskRewardCallback extends GrpcApiCallback{
         void onAccountResponse(List<RewardIfEventResponse> response);
+    }
+
+    public interface LockPointCallback extends GrpcApiCallback{
+        void onAccountResponse(LockPointsResponse response);
+    }
+
+    public interface UnLockPointCallback extends GrpcApiCallback{
+        void onAccountResponse(UnlockPointsResponse response);
     }
 
     public void askReward(String payerUuid,String payeeUuid,
                           String payeeStoreUuid,String payeeWorkerUuid,
-                          int shouldPay,askRewardCallback callback,
-                          GrpcApiCallback grpcApiCallback){
+                          int shouldPay,AskRewardCallback callback){
         QueryRewardsIfEventRequest.Builder request = QueryRewardsIfEventRequest.newBuilder();
         IfPaymentCreatedEvent.Builder createdEvent = IfPaymentCreatedEvent.newBuilder()
                 .setPayeeUuid(payeeUuid)
@@ -68,7 +77,7 @@ public class AccountingService {
             @Override
             public void onError(Throwable t) {
                 log.info("call queryRewardsIfEvent error,cause:{},message:{}",t.getCause(),t.getMessage());
-                grpcApiCallback.onGrpcApiError(Status.newBuilder()
+                callback.onGrpcApiError(Status.newBuilder()
                         .setCode(Status.Code.OK)
                         .setDetails("系统繁忙,稍后重试")
                         .build());
@@ -76,7 +85,7 @@ public class AccountingService {
 
             @Override
             public void onCompleted() {
-                grpcApiCallback.onGrpcApiCompleted();
+                callback.onGrpcApiCompleted();
             }
         });
 
@@ -105,6 +114,7 @@ public class AccountingService {
         accountApiStub.upsertJournal(request.build(), new StreamObserver<JournalResponse>() {
             @Override
             public void onNext(JournalResponse value) {
+                log.info("response:{}",value.toString());
                 journalResponse = value;
             }
 
@@ -121,6 +131,54 @@ public class AccountingService {
         return journalResponse;
     }
 
+    public void lockPoints(String payerUuid,String paymentUuid,Integer pointsAmount,LockPointCallback callback){
+        LockPointsRequest request = LockPointsRequest.newBuilder().setPayerUuid(payerUuid).setPaymentUuid(paymentUuid).setPointsAmount(pointsAmount).build();
+        accountingAccountApiStub.lockPoints(request, new StreamObserver<LockPointsResponse>() {
+            @Override
+            public void onNext(LockPointsResponse value) {
+                callback.onAccountResponse(value);
+            }
+
+            @Override
+            public void onError(Throwable t) {
+                log.info("call lockPoints error,case:{},message:{}",t.getCause(),t.getMessage());
+                callback.onGrpcApiError(Status.newBuilder()
+                        .setCode(Status.Code.OK)
+                        .setDetails("系统繁忙,稍后重试")
+                        .build());
+            }
+
+            @Override
+            public void onCompleted() {
+                callback.onGrpcApiCompleted();
+            }
+        });
+
+    }
+
+    public void unLockPoints(String paymentUuid,String payerUuid,UnLockPointCallback callback){
+        UnlockPointsRequest request = UnlockPointsRequest.newBuilder().setPayerUuid(payerUuid).setPaymentUuid(paymentUuid).build();
+        accountingAccountApiStub.unlockPoints(request, new StreamObserver<UnlockPointsResponse>() {
+            @Override
+            public void onNext(UnlockPointsResponse value) {
+                callback.onAccountResponse(value);
+            }
+
+            @Override
+            public void onError(Throwable t) {
+                log.info("call lockPoints error,case:{},message:{}",t.getCause(),t.getMessage());
+                callback.onGrpcApiError(Status.newBuilder()
+                        .setCode(Status.Code.OK)
+                        .setDetails("系统繁忙,稍后重试")
+                        .build());
+            }
+
+            @Override
+            public void onCompleted() {
+                callback.onGrpcApiCompleted();
+            }
+        });
+    }
 
 
 }

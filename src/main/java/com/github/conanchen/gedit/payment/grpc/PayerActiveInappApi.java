@@ -6,6 +6,8 @@ import com.alipay.api.DefaultAlipayClient;
 import com.alipay.api.domain.AlipayTradeAppPayModel;
 import com.alipay.api.request.AlipayTradeAppPayRequest;
 import com.alipay.api.response.AlipayTradeAppPayResponse;
+import com.github.conanchen.gedit.accounting.account.grpc.LockPointsResponse;
+import com.github.conanchen.gedit.accounting.account.grpc.UnlockPointsResponse;
 import com.github.conanchen.gedit.accounting.rewardsif.grpc.RewardIfEventResponse;
 import com.github.conanchen.gedit.common.grpc.PaymentChannel;
 import com.github.conanchen.gedit.common.grpc.Status;
@@ -13,7 +15,6 @@ import com.github.conanchen.gedit.payer.activeinapp.grpc.*;
 import com.github.conanchen.gedit.payment.GrpcService.AccountingService;
 import com.github.conanchen.gedit.payment.GrpcService.StoreService;
 import com.github.conanchen.gedit.payment.GrpcService.UserService;
-import com.github.conanchen.gedit.payment.GrpcService.callback.GrpcApiCallback;
 import com.github.conanchen.gedit.payment.PaymentEnum.PaymentStatusEnum;
 import com.github.conanchen.gedit.payment.common.grpc.PaymentResponse;
 import com.github.conanchen.gedit.payment.config.alipay.alipayConfig.AlipayConfig;
@@ -31,7 +32,6 @@ import com.github.conanchen.gedit.payment.repository.PointsRepository;
 import com.github.conanchen.gedit.payment.unit.EntToMapUnit;
 import com.github.conanchen.gedit.payment.unit.RedisSetMap;
 import com.github.conanchen.gedit.payment.unit.SerialNumber;
-import com.github.conanchen.gedit.payment.validate.PaymentValidate;
 import com.github.conanchen.gedit.store.profile.grpc.StoreProfile;
 import com.github.conanchen.gedit.store.profile.grpc.StoreProfileResponse;
 import com.github.conanchen.gedit.user.profile.grpc.UserProfile;
@@ -47,7 +47,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.lognet.springboot.grpc.GRpcService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
@@ -65,8 +65,6 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
     private StoreService storeService;
     @Autowired
     private UserService userService;
-    @Autowired
-    private RedisTemplate redisTemplate;
     @Autowired
     private WXPAySign wxpAySign;
     @Autowired
@@ -160,30 +158,37 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         log.info("redis get map :{}",map.toString());
         //todo 询问accounting系统用户积分情况
         accountingService.askReward(payerUuid
-                , map.get("payeeUuid"),  map.get("payeeStoreUuid"),
-                map.get("payeeWorkerUuid"), shouldPay, (List<RewardIfEventResponse> responses)->{
-                   log.info("askReward responses:{}",responses.toString());
-                    PreparePayerInappPaymentResponse response = PreparePayerInappPaymentResponse.newBuilder()
-                            .setActualPay(0)
-                            .setPayeeCode(code)
-                            .setPayeeName("dsa")
-                            .setPayeeStoreName("kdhas")
-                            .setPayeeWorkerName("kdhsajkgduk")
-                            .setShouldPay(1)
-                            .setActualPay(0)
-                            .setPointsPay(0)
-                            .setPointsRepay(0)
-                            .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder()
-                                    .setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK)
-                                    .setDetails("success")
-                                    .build())
-                            .build();
-                    streamObserver.onNext(response);
-                    streamObserver.onCompleted();
-                }, new GrpcApiCallback() {
+                , map.get("payeeUuid"), map.get("payeeStoreUuid"),
+                map.get("payeeWorkerUuid"), shouldPay, new AccountingService.AskRewardCallback() {
+                    @Override
+                    public void onAccountResponse(List<RewardIfEventResponse> responseList) {
+                        log.info("responseList:{}",responseList.toString());
+                        PreparePayerInappPaymentResponse response = PreparePayerInappPaymentResponse.newBuilder()
+                                .setActualPay(0)
+                                .setPayeeCode(code)
+                                .setPayeeName("dsa")
+                                .setPayeeStoreName("kdhas")
+                                .setPayeeWorkerName("kdhsajkgduk")
+                                .setShouldPay(1)
+                                .setActualPay(0)
+                                .setPointsPay(0)
+                                .setPointsRepay(0)
+                                .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder()
+                                        .setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK)
+                                        .setDetails("success")
+                                        .build())
+                                .build();
+                        streamObserver.onNext(response);
+                        streamObserver.onCompleted();
+                    }
+
                     @Override
                     public void onGrpcApiError(Status status) {
                         log.error("询问积分系统出错，{}",status.getDetails());
+                        PreparePayerInappPaymentResponse response = PreparePayerInappPaymentResponse.newBuilder()
+                                .setStatus(Status.newBuilder().setCode(Status.Code.NOT_FOUND).setDetails(status.getDetails())).build();
+                        streamObserver.onNext(response);
+                        streamObserver.onCompleted();
                     }
 
                     @Override
@@ -194,6 +199,7 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void create(CreatePayerInappPaymentRequest request, StreamObserver<PaymentResponse> responseObserver) {
         try {
             Hope.that(request.getShouldPay()).named("shouldPay")
@@ -204,68 +210,107 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
             if(e instanceof UncheckedValidationException){
                 PaymentResponse paymentResponse = PaymentResponse.newBuilder()
                         .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder()
-                                .setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK)
+                                .setCode(Status.Code.OUT_OF_RANGE)
                                 .setDetails(e.getMessage())).build();
                 responseObserver.onNext(paymentResponse);
                 responseObserver.onCompleted();
                 return;
             }
         }
-
         Long orderNo = SerialNumber.digitalSerialNumberAndDate();
         Claims claims = AuthInterceptor.USER_CLAIMS.get();
         String payerUid = claims.getSubject();
-//        String payerUid = UUID.randomUUID().toString();
-        Points points = pointsRepository.findByUserId(payerUid);
-        if(points == null){
-           points = initPoint(payerUid);
+        Integer actualPay = request.getActualPay();
+        Payment payObject = addPayment(request,orderNo,payerUid,request.getPointsRepay(),actualPay);
+        if(request.getPointsPay() < 0){
+            accountingService.lockPoints(payerUid, payObject.getUuid(), request.getPointsPay(), new AccountingService.LockPointCallback() {
+                @Override
+                public void onAccountResponse(LockPointsResponse response) {
+                    if(response.getStatus().getCode().equals(Status.Code.OK)){
+                        String signature = "";
+                        log.info("channel:{}",request.getPaymentChannelValue());
+                        if(request.getPaymentChannelValue()== PaymentChannel.ALIPAY_VALUE){
+                            String returnStr = null;
+                            try {
+                                Double AlipayActualPay =(((double)actualPay) / 100);
+                                returnStr = aliPayRequest(orderNo.toString(), AlipayActualPay.toString());
+                            } catch (AlipayApiException e) {
+                                e.printStackTrace();
+                            }
+                            signature = returnStr;
+                        }else if(request.getPaymentChannelValue() == PaymentChannel.WECHAT_VALUE){
+                            SortedMap sortedMap = null;
+                            try {
+                                sortedMap = wxPayRequest(orderNo.toString(),actualPay.toString(),request.getPayerIp());
+                            } catch (Exception e) {
+                                log.error("e:{}",e.getMessage());
+                            }
+                            signature = gson.toJson(sortedMap);
+                        }
+                        log.info("signature:{}",signature);
+                        PaymentResponse paymentResponse = PaymentResponse.newBuilder().setPayment(com.github.conanchen.gedit.payment.common.grpc.Payment.newBuilder()
+                                .setPaymentChannel(PaymentChannel.valueOf(payObject.getChannel()))
+                                .setActualPay(payObject.getActualPay())
+                                .setUuid(payObject.getUuid()).setPaymentChannelSignature(signature))
+                                .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK).setDetails("sucess")).build();
+                        responseObserver.onNext(paymentResponse);
+                        responseObserver.onCompleted();
+                    }else{
+                        return;
+                    }
+                }
+
+                @Override
+                public void onGrpcApiError(Status status) {
+                    PaymentResponse paymentResponse = PaymentResponse.newBuilder()
+                            .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder()
+                                    .setCode(Status.Code.OUT_OF_RANGE).setDetails(status.getDetails())).build();
+                    responseObserver.onNext(paymentResponse);
+                    responseObserver.onCompleted();
+                    return;
+                }
+
+                @Override
+                public void onGrpcApiCompleted() {
+                    responseObserver.onCompleted();
+                }
+            });
         }
-        PaymentValidate paymentValidate = new PaymentValidate();
-        paymentValidate.CreateValidate(request,responseObserver,points);
-        Integer actualPay = request.getShouldPay();
-        int returnPoints = 0;
-        int itemPoints = 0;
-        String remark = "";
-        int type = 10;
-        int updateRow = updatePointsByVersion(payerUid,request,returnPoints);
-        Hope.that(request.getPointsPay()).isNotNull();
-        if(updateRow != 1 ){
-            String msg = updateRow < 1 ? "请稍后重试" : "余额不足" ;
-            PaymentResponse paymentResponse = PaymentResponse.newBuilder()
-                    .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OUT_OF_RANGE).setDetails(msg)).build();
-            responseObserver.onNext(paymentResponse);
-            responseObserver.onCompleted();
-            return;
-        }
-        addPointItem(orderNo.toString(),itemPoints,remark,payerUid,type);
-        Payment payObject = addPayment(request,orderNo,payerUid,returnPoints,actualPay);
-        String signature = "";
-        log.info("channel:{}",request.getPaymentChannelValue());
-        if(request.getPaymentChannelValue()== PaymentChannel.ALIPAY_VALUE){
-            String returnStr = null;
-            try {
-                returnStr = aliPayRequest(orderNo.toString(), actualPay);
-            } catch (AlipayApiException e) {
-                e.printStackTrace();
+
+
+    }
+
+    @Override
+    public void cancel (CancelPayerInappPaymentRequest request,StreamObserver<PaymentResponse> streamObserver) {
+        String paymentUuid = request.getPaymentUuid();
+        Payment payment = (Payment)paymentRepository.findOne(paymentUuid);
+        log.info("payment:{}",payment.toString());
+        accountingService.unLockPoints(paymentUuid, payment.getPayerId(), new AccountingService.UnLockPointCallback() {
+            @Override
+            public void onAccountResponse(UnlockPointsResponse response) {
+                if(response.getStatus().getCode().equals(Status.Code.OK)){
+                    PaymentResponse paymentResponse = PaymentResponse.newBuilder().build();
+                    streamObserver.onNext(paymentResponse);
+                    streamObserver.onCompleted();
+                }
+                return;
             }
-            signature = returnStr;
-        }else if(request.getPaymentChannelValue() == PaymentChannel.WECHAT_VALUE){
-            SortedMap sortedMap = null;
-            try {
-                sortedMap = wxPayRequest(orderNo.toString(),actualPay+"",request.getPayerIp());
-            } catch (Exception e) {
-                log.error("e:{}",e.getMessage());
+
+            @Override
+            public void onGrpcApiError(Status status) {
+                PaymentResponse paymentResponse = PaymentResponse.newBuilder()
+                        .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder()
+                                .setCode(Status.Code.OUT_OF_RANGE).setDetails(status.getDetails())).build();
+                streamObserver.onNext(paymentResponse);
+                streamObserver.onCompleted();
+                return;
             }
-            signature = gson.toJson(sortedMap);
-        }
-        log.info("signature:{}",signature);
-        PaymentResponse paymentResponse = PaymentResponse.newBuilder().setPayment(com.github.conanchen.gedit.payment.common.grpc.Payment.newBuilder()
-                .setPaymentChannel(PaymentChannel.valueOf(payObject.getChannel()))
-                .setActualPay(payObject.getActualPay())
-                .setUuid(payObject.getUuid()).setPaymentChannelSignature(signature))
-                .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK).setDetails("sucess")).build();
-        responseObserver.onNext(paymentResponse);
-        responseObserver.onCompleted();
+
+            @Override
+            public void onGrpcApiCompleted() {
+                streamObserver.onCompleted();
+            }
+        });
     }
 
 
@@ -302,21 +347,7 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         return receiptCode.build();
     }
 
-    private Points initPoint(String userId){
-        Points points = new Points();
-        points.setUsable(0);
-        points.setFreeze(0);
-        points.setRollIn(0);
-        points.setRollOut(0);
-        points.setUserId(userId);
-        points.setVersion(0l);
-        points.setCreateDate(new Date());
-        points.setUpdateDate(new Date());
-        Points returnPoints = (Points) pointsRepository.save(points);
-        return returnPoints;
-    }
-
-    private String aliPayRequest(String orderNo,int shouldPAy) throws AlipayApiException {
+    private String aliPayRequest(String orderNo,String shouldPAy) throws AlipayApiException {
         String notify_url = "http://dev.jifenpz.com/aliPay/notify";
         String serviceURl = "https://openapi.alipay.com/gateway.do";
         AlipayClient alipayClient = new DefaultAlipayClient(serviceURl,alipayConfig.app_id ,
@@ -339,7 +370,7 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         model.setSubject("App支付测试Java");
         model.setOutTradeNo(orderNo.toString());
         model.setTimeoutExpress("30m");
-        model.setTotalAmount(shouldPAy+"");
+        model.setTotalAmount(shouldPAy);
         model.setProductCode("QUICK_MSECURITY_PAY");
         request.setBizModel(model);
         request.setNotifyUrl(notify_url);
@@ -405,7 +436,7 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
                         .status(PaymentStatusEnum.INPROGRESS.getCode())
                         .points(returnPoints)
                         .shouldPay(request.getShouldPay())
-                        .actualPay(actualPay)
+                        .actualPay(request.getActualPay())
                         .pointsPay(request.getPointsPay())
                         .updateDate(new Date())
                         .createDate(new Date()).build();
