@@ -157,8 +157,9 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         Map<String,String> map = redisSetMap.getCacheMap(code);
         log.info("redis get map :{}",map.toString());
         //todo 询问accounting系统用户积分情况
-        accountingService.askReward(payerUuid
-                , map.get("payeeUuid"), map.get("payeeStoreUuid"),
+        accountingService.askReward(payerUuid,
+                map.get("payeeUuid"),
+                map.get("payeeStoreUuid"),
                 map.get("payeeWorkerUuid"), shouldPay, new AccountingService.AskRewardCallback() {
                     @Override
                     public void onAccountResponse(List<RewardIfEventResponse> responseList) {
@@ -219,13 +220,16 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         }
         Long orderNo = SerialNumber.digitalSerialNumberAndDate();
         Claims claims = AuthInterceptor.USER_CLAIMS.get();
-        String payerUid = claims.getSubject();
+        String payerUuid = claims.getSubject();
+        log.info("payerUuid:{}",payerUuid);
         Integer actualPay = request.getActualPay();
-        Payment payObject = addPayment(request,orderNo,payerUid,request.getPointsRepay(),actualPay);
+        Payment payObject = addPayment(request,orderNo,payerUuid,request.getPointsRepay(),actualPay);
+        log.info("create payObject :{}",payObject.toString());
         if(request.getPointsPay() < 0){
-            accountingService.lockPoints(payerUid, payObject.getUuid(), request.getPointsPay(), new AccountingService.LockPointCallback() {
+            accountingService.lockPoints(payerUuid, payObject.getUuid(), request.getPointsPay(), new AccountingService.LockPointCallback() {
                 @Override
                 public void onAccountResponse(LockPointsResponse response) {
+                    log.info("lockPoints response:{}",response.toString());
                     if(response.getStatus().getCode().equals(Status.Code.OK)){
                         String signature = "";
                         log.info("channel:{}",request.getPaymentChannelValue());
