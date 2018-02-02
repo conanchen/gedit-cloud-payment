@@ -200,7 +200,6 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public void create(CreatePayerInappPaymentRequest request, StreamObserver<PaymentResponse> responseObserver) {
         try {
             Hope.that(request.getShouldPay()).named("shouldPay")
@@ -225,62 +224,60 @@ public class PayerActiveInappApi extends PayerActiveInappApiGrpc.PayerActiveInap
         Integer actualPay = request.getActualPay();
         Payment payObject = addPayment(request,orderNo,payerUuid,request.getPointsRepay(),actualPay);
         log.info("create payObject :{}",payObject.toString());
-        if(request.getPointsPay() <= 0){
-            accountingService.lockPoints(payerUuid, payObject.getUuid(), request.getPointsPay(), new AccountingService.LockPointCallback() {
-                @Override
-                public void onAccountResponse(LockPointsResponse response) {
-                    log.info("lockPoints response:{}",response.toString());
-                    if(response.getStatus().getCode().equals(Status.Code.OK)){
-                        String signature = "";
-                        log.info("channel:{}",request.getPaymentChannelValue());
-                        if(request.getPaymentChannelValue()== PaymentChannel.ALIPAY_VALUE){
-                            String returnStr = null;
-                            try {
-                                Double AlipayActualPay =(((double)actualPay) / 100);
-                                returnStr = aliPayRequest(orderNo.toString(), AlipayActualPay.toString());
-                            } catch (AlipayApiException e) {
-                                e.printStackTrace();
-                            }
-                            signature = returnStr;
-                        }else if(request.getPaymentChannelValue() == PaymentChannel.WECHAT_VALUE){
-                            SortedMap sortedMap = null;
-                            try {
-                                sortedMap = wxPayRequest(orderNo.toString(),actualPay.toString(),request.getPayerIp());
-                            } catch (Exception e) {
-                                log.error("e:{}",e.getMessage());
-                            }
-                            signature = gson.toJson(sortedMap);
+        accountingService.lockPoints(payerUuid, payObject.getUuid(), request.getPointsPay(), new AccountingService.LockPointCallback() {
+            @Override
+            public void onAccountResponse(LockPointsResponse response) {
+                log.info("lockPoints response:{}",response.toString());
+                if(response.getStatus().getCode().equals(Status.Code.OK)){
+                    String signature = "";
+                    log.info("channel:{}",request.getPaymentChannelValue());
+                    if(request.getPaymentChannelValue()== PaymentChannel.ALIPAY_VALUE){
+                        String returnStr = null;
+                        try {
+                            Double AlipayActualPay =(((double)actualPay) / 100);
+                            returnStr = aliPayRequest(orderNo.toString(), AlipayActualPay.toString());
+                        } catch (AlipayApiException e) {
+                            e.printStackTrace();
                         }
-                        log.info("signature:{}",signature);
-                        PaymentResponse paymentResponse = PaymentResponse.newBuilder().setPayment(com.github.conanchen.gedit.payment.common.grpc.Payment.newBuilder()
-                                .setPaymentChannel(PaymentChannel.valueOf(payObject.getChannel()))
-                                .setActualPay(payObject.getActualPay())
-                                .setUuid(payObject.getUuid()).setPaymentChannelSignature(signature))
-                                .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK).setDetails("sucess")).build();
-                        responseObserver.onNext(paymentResponse);
-                        responseObserver.onCompleted();
-                    }else{
-                        return;
+                        signature = returnStr;
+                    }else if(request.getPaymentChannelValue() == PaymentChannel.WECHAT_VALUE){
+                        SortedMap sortedMap = null;
+                        try {
+                            sortedMap = wxPayRequest(orderNo.toString(),actualPay.toString(),request.getPayerIp());
+                        } catch (Exception e) {
+                            log.error("e:{}",e.getMessage());
+                        }
+                        signature = gson.toJson(sortedMap);
                     }
-                }
-
-                @Override
-                public void onGrpcApiError(Status status) {
-                    PaymentResponse paymentResponse = PaymentResponse.newBuilder()
-                            .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder()
-                                    .setCode(Status.Code.OUT_OF_RANGE).setDetails(status.getDetails())).build();
+                    log.info("signature:{}",signature);
+                    PaymentResponse paymentResponse = PaymentResponse.newBuilder().setPayment(com.github.conanchen.gedit.payment.common.grpc.Payment.newBuilder()
+                            .setPaymentChannel(PaymentChannel.valueOf(payObject.getChannel()))
+                            .setActualPay(payObject.getActualPay())
+                            .setUuid(payObject.getUuid()).setPaymentChannelSignature(signature))
+                            .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder().setCode(com.github.conanchen.gedit.common.grpc.Status.Code.OK).setDetails("sucess")).build();
                     responseObserver.onNext(paymentResponse);
                     responseObserver.onCompleted();
+                }else{
                     return;
                 }
+            }
 
-                @Override
-                public void onGrpcApiCompleted() {
-                    responseObserver.onCompleted();
-                }
-            });
-        }
+            @Override
+            public void onGrpcApiError(Status status) {
+                paymentRepository.delete(payObject.getUuid());
+                PaymentResponse paymentResponse = PaymentResponse.newBuilder()
+                        .setStatus(com.github.conanchen.gedit.common.grpc.Status.newBuilder()
+                                .setCode(Status.Code.OUT_OF_RANGE).setDetails(status.getDetails())).build();
+                responseObserver.onNext(paymentResponse);
+                responseObserver.onCompleted();
+                return;
+            }
 
+            @Override
+            public void onGrpcApiCompleted() {
+                responseObserver.onCompleted();
+            }
+        });
 
     }
 

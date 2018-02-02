@@ -14,6 +14,4 @@ public interface PaymentRepository<T,String extends Serializable> extends JpaRep
 
     Payment findByOrderNo(String orderNo);
 
-    Payment findByUuid(String paymentUuid);
-
 }
